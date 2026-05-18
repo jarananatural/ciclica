@@ -1814,6 +1814,8 @@ function signInWithGoogle() {
 function continueWithoutLogin() {
   document.getElementById('loginModal').style.display = 'none';
   localStorage.setItem('jn_skip_login', '1');
+  if(document.getElementById('screen-app').classList.contains('active')) return;
+  launchApp();
 }
 
 function signOut() {
@@ -4709,6 +4711,7 @@ function launchApp() {
   if(!localStorage.getItem('jn_disclaimer_v4')) {
     setTimeout(()=>{ document.getElementById('disclaimerModal').style.display='flex'; }, 800);
   }
+  checkTour();
 }
 
 function closeAyuda(e) {
@@ -5350,7 +5353,6 @@ setMaxDateInputs();
 applyTabStyle(localStorage.getItem('jn_tab_style')||'b');
 initFirebase();
 checkLogin();
-checkTour();
 if(profile.name) {
   launchApp();
 } else {
