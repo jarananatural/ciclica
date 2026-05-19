@@ -1048,6 +1048,11 @@ body.tab-style-c .sub-tab.on::after{content:'';position:absolute;bottom:4px;left
       <div id="ajustesTour"></div>
     </div>
     <div class="pc-section">
+      <div class="pc-label">Apoyar el proyecto</div>
+      <div style="font-size:11px;color:var(--text-hint);margin-bottom:12px;line-height:1.5;">Cíclica es gratuita y siempre lo será. Si te suma, podés invitarnos un cafecito 🌸</div>
+      <button onclick="openCafecito()" style="width:100%;padding:11px;border:none;border-radius:var(--r-lg);background:var(--salmon);color:white;font-size:13px;font-weight:700;font-family:var(--fb);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">☕ Invitarnos un cafecito</button>
+    </div>
+    <div class="pc-section">
       <div class="pc-label">Cuenta</div>
       <div id="ajustesCuentaInfo" style="margin-bottom:10px;font-size:12px;color:var(--text-hint);"></div>
       <button onclick="signOut()" style="width:100%;padding:10px;border:1.5px solid var(--cream-dark);border-radius:var(--r-lg);background:white;color:var(--text-hint);font-size:12px;font-weight:700;font-family:var(--fb);cursor:pointer;">Cerrar sesión</button>
@@ -1069,6 +1074,18 @@ body.tab-style-c .sub-tab.on::after{content:'';position:absolute;bottom:4px;left
     </button>
   </nav>
 </div>
+<!-- ── MODAL CAFECITO ── -->
+<div id="cacecitoModal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);backdrop-filter:blur(3px);align-items:flex-end;justify-content:center;">
+  <div style="background:var(--cream);width:100%;max-width:430px;border-radius:24px 24px 0 0;padding:28px 24px 36px;text-align:center;box-shadow:0 -8px 40px rgba(0,0,0,.15);">
+    <div style="width:36px;height:4px;border-radius:2px;background:var(--cream-dark);margin:0 auto 20px;"></div>
+    <div style="font-size:36px;margin-bottom:10px;">☕</div>
+    <div style="font-family:var(--fd);font-size:20px;color:var(--teal-deep);margin-bottom:8px;">¿Te suma Cíclica?</div>
+    <div style="font-size:13px;color:var(--text-soft);line-height:1.6;margin-bottom:24px;">Cíclica es gratuita y siempre lo será.<br>Si querés apoyar el proyecto de <strong>Jarana Natural</strong>, podés invitarnos un cafecito. ¡Cada granito de arena suma! 🌸</div>
+    <button onclick="goToCafecito()" style="width:100%;padding:13px;border:none;border-radius:50px;background:var(--salmon);color:white;font-size:14px;font-weight:700;font-family:var(--fb);cursor:pointer;margin-bottom:10px;">☕ Invitarnos un cafecito</button>
+    <button onclick="closeCafecitoModal()" style="width:100%;padding:11px;border:none;border-radius:50px;background:transparent;color:var(--text-hint);font-size:13px;font-family:var(--fb);cursor:pointer;">Quizás después</button>
+  </div>
+</div>
+
 <!-- ══ PROFILE ══ -->
 <div id="screen-profile" class="screen">
   <div class="profile-hero">
@@ -1229,7 +1246,7 @@ body.tab-style-c .sub-tab.on::after{content:'';position:absolute;bottom:4px;left
     <div class="modal-handle"></div>
     <div class="modal-title">Guardá tus datos</div>
     <div class="modal-text">Con una cuenta podés acceder a tus ciclos desde cualquier dispositivo y no perder tu historial.</div>
-    <button id="googleLoginBtn2" onclick="signInWithGoogle()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 20px;border:1.5px solid #E0E0E0;border-radius:50px;background:white;cursor:pointer;font-size:14px;font-weight:700;color:#3C3C3C;font-family:var(--fb);transition:box-shadow .2s;"><svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.3z"/></svg>Continuar con Google</button>
+    <button class="btn-secondary" onclick="loginGoogle()" style="display:flex;align-items:center;justify-content:center;gap:10px;"><svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.3z"/></svg>Continuar con Google</button>
     <button class="btn-primary" onclick="loginEmail()">Continuar con email</button>
     <button class="btn-ghost" onclick="document.getElementById('loginModal').style.display='none'">Ahora no</button>
   </div>
@@ -1778,43 +1795,39 @@ function isIosSafari() {
 
 function signInWithGoogle() {
   const btn = document.getElementById('googleLoginBtn');
-  const btn2 = document.getElementById('googleLoginBtn2');
-  const googleSVG = '<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.3z"/></svg> Continuar con Google';
-  function resetBtns() {
-    if(btn) { btn.disabled = false; btn.innerHTML = googleSVG; }
-    if(btn2) { btn2.disabled = false; btn2.innerHTML = googleSVG; }
-  }
   if(!fbAuth) {
+    // Firebase no cargó todavía — reintentar en 800ms
     if(btn) btn.textContent = 'Cargando...';
-    if(btn2) btn2.textContent = 'Cargando...';
     setTimeout(signInWithGoogle, 800);
     return;
   }
   if(btn) { btn.textContent = 'Conectando...'; btn.disabled = true; }
-  if(btn2) { btn2.textContent = 'Conectando...'; btn2.disabled = true; }
   const provider = new firebase.auth.GoogleAuthProvider();
-  fbAuth.signInWithPopup(provider).then(function(result) {
-    fbUser = result.user;
-    localStorage.setItem('jn_loggedin', '1');
-    document.getElementById('loginModal').style.display = 'none';
-    loadFromFirestore(fbUser.uid);
-    renderUserBadge(fbUser);
-    showToast('\u00a1Bienvenida, ' + (fbUser.displayName||'').split(' ')[0] + '! \U0001F338');
-  }).catch(function(err) {
-    console.error(err);
-    if(err.code === 'auth/popup-blocked') {
-      showToast('El navegador bloque\u00f3 la ventana. Permit\u00ed los popups e intent\u00e1 de nuevo.');
-    } else {
-      showToast('No se pudo conectar con Google. Intent\u00e1 de nuevo.');
-    }
-    resetBtns();
-  });
+
+  if(isIosSafari()) {
+    // iOS Safari — usar redirect
+    localStorage.setItem('jn_pending_login', '1');
+    fbAuth.signInWithRedirect(provider);
+  } else {
+    // Android/Chrome — usar popup
+    fbAuth.signInWithPopup(provider).then(function(result) {
+      fbUser = result.user;
+      localStorage.setItem('jn_loggedin', '1');
+      document.getElementById('loginModal').style.display = 'none';
+      loadFromFirestore(fbUser.uid);
+      renderUserBadge(fbUser);
+      showToast('¡Bienvenida, ' + (fbUser.displayName||'').split(' ')[0] + '! 🌸');
+    }).catch(function(err) {
+      console.error(err);
+      showToast('No se pudo conectar con Google');
+      if(btn) { btn.disabled = false; btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg> Continuar con Google'; }
+    });
+  }
 }
+
 function continueWithoutLogin() {
   document.getElementById('loginModal').style.display = 'none';
   localStorage.setItem('jn_skip_login', '1');
-  if(document.getElementById('screen-app').classList.contains('active')) return;
-  launchApp();
 }
 
 function signOut() {
@@ -1863,6 +1876,13 @@ function loadFromFirestore(uid) {
       recalcCurDay();
       renderProfile();
       showToast('Datos sincronizados ✓');
+      // Si el onboarding ya fue completado, ir directo a la app
+      if(cycle1Date && profile.cycleLen) {
+        var appScreen = document.getElementById('screen-app');
+        if(appScreen && !appScreen.classList.contains('active')) {
+          launchApp(true); // sin confetti al re-login
+        }
+      }
     }
   }).catch(function(e) { console.warn('Load error:', e); });
 }
@@ -2923,6 +2943,28 @@ function saveDay() {
   // Sacar el banner de edición
   const b = document.getElementById('editDayBanner');
   if(b) b.remove();
+  // Mostrar cafecito cada 60 días
+  setTimeout(maybShowCafecito, 2000);
+}
+
+// ── CAFECITO ──
+function maybShowCafecito() {
+  const last = localStorage.getItem('jn_cafecito_last');
+  const now = Date.now();
+  if(!last || (now - parseInt(last)) > 60 * 24 * 60 * 60 * 1000) {
+    document.getElementById('cacecitoModal').style.display = 'flex';
+  }
+}
+function openCafecito() {
+  document.getElementById('cacecitoModal').style.display = 'flex';
+}
+function closeCafecitoModal() {
+  document.getElementById('cacecitoModal').style.display = 'none';
+  localStorage.setItem('jn_cafecito_last', Date.now().toString());
+}
+function goToCafecito() {
+  closeCafecitoModal();
+  window.open('https://cafecito.app/jarananatural', '_blank');
 }
 
 // ══ ALERTS ══
@@ -3383,18 +3425,7 @@ function renderHdDayDetail(day, info) {
 }
 // ══ /HISTORIAL ══
 
-function saveDay() {
-  const isEdit = !!dayData[curDay];
-  dayData[curDay]={flow:selFlow,color:selColor,energy:energyLevel,symptoms:[...symSel],tags:[...currentTags],diary:document.getElementById('diaryField')?.value||'',date:new Date().toISOString()};
-  save(); drawWheel();
-  const btn=document.getElementById('saveBtn');
-  btn.textContent='¡Guardado!'; btn.style.background='var(--teal-dark)';
-  setTimeout(()=>{btn.textContent='Guardar registro del día';btn.style.background='var(--teal)';},1500);
-  if(isEdit) showToast('Registro del día ' + curDay + ' actualizado ✓');
-  // Sacar el banner de edición
-  const b = document.getElementById('editDayBanner');
-  if(b) b.remove();
-}
+
 
 // ══ ALERTS ══
 function renderAlerts() {
@@ -4211,7 +4242,7 @@ function renderProfile(){
   const ps=document.getElementById('profSalud');
   if(ps)ps.innerHTML=[['Primera mens.',profile.primeraAnio||'--'],['Embarazos',profile.embarazos||'--'],['Abortos',profile.abortos||'--'],['Maternidad',profile.maternidad||'--'],['Condiciones',(profile.condicionesSalud||[]).join(', ')||'--'],['Menopausia familiar',profile.menopausiaFamiliar||'--']].map(([k,v])=>row(k,v)).join('');
   const pg=document.getElementById('profGestion');
-  if(pg)pg.innerHTML=[['Métodos',(profile.metodos||[]).join(', ')||'--'],['Anticonceptivos',(profile.anticonceptivos||[]).join(', ')||'--'],['Terapia hormonal',(profile.hormonal||[]).join(', ')||'--'],['Tratamiento',profile.tratamiento||'--'],['Desde',profile.tiempoTratamiento||'--']].map(([k,v])=>row(k,v)).join('');
+  if(pg){const gRows=[['Métodos',(profile.metodos||[]).join(', ')||'--'],['Anticonceptivos',(profile.anticonceptivos||[]).join(', ')||'--'],['Terapia hormonal',(profile.hormonal||[]).join(', ')||'--'],['Tratamiento',profile.tratamiento||'--']];if(profile.tratamiento&&profile.tratamiento!=='--'&&profile.tiempoTratamiento)gRows.push(['Desde',profile.tiempoTratamiento]);pg.innerHTML=gRows.map(([k,v])=>row(k,v)).join('');}
   renderAvatarSelector();
 
   // ── Secciones activas ──
@@ -4693,8 +4724,8 @@ function recalcCurDay() {
     curDay = Math.min(dayInCycle, TOTAL);
   }
 }
-function launchApp() {
-  setTimeout(launchConfetti, 100);
+function launchApp(skipConfetti) {
+  if(!skipConfetti) setTimeout(launchConfetti, 100);
   document.getElementById('screen-onboarding').classList.remove('active');
   document.getElementById('screen-app').classList.add('active');
   if(profile.cycleLen) TOTAL=profile.cycleLen;
@@ -4708,9 +4739,8 @@ function launchApp() {
   if(cycleHistory.length>0) document.getElementById('cycleNameLabel').textContent='Ciclo '+currentCycleId;
   // Show disclaimer
   if(!localStorage.getItem('jn_disclaimer_v4')) {
-    setTimeout(()=>{ document.getElementById('disclaimerModal').style.display='flex'; }, 800);
+    setTimeout(()=>{ document.getElementById('welcomeModal').style.display='flex'; }, 800);
   }
-  checkTour();
 }
 
 function closeAyuda(e) {
@@ -4939,7 +4969,7 @@ function welcomeFinish() {
 function closeAyuda(e) {
   if(e.target === document.getElementById('welcomeModal')) welcomeFinish();
 }
-function acceptDisclaimer(){localStorage.setItem('jn_disclaimer_v4','1');document.getElementById('disclaimerModal').style.display='none';setTimeout(()=>{if(!localStorage.getItem('jn_loggedin')&&Object.keys(dayData).length>=3)document.getElementById('cloudBanner').style.display='block';},2000);}
+function acceptDisclaimer(){localStorage.setItem('jn_disclaimer_v4','1');document.getElementById('welcomeModal').style.display='none';setTimeout(()=>{if(!localStorage.getItem('jn_loggedin')&&Object.keys(dayData).length>=3)document.getElementById('cloudBanner').style.display='block';},2000);}
 function showLoginModal(){document.getElementById('cloudBanner').style.display='none';document.getElementById('loginModal').style.display='flex';}
 function loginGoogle(){document.getElementById('loginModal').style.display='none';localStorage.setItem('jn_loggedin','google');showToast('¡Cuenta conectada! Tus datos se sincronizarán.');}
 function loginEmail(){const email=prompt('Ingresá tu email:');if(!email)return;document.getElementById('loginModal').style.display='none';localStorage.setItem('jn_loggedin','email:'+email);showToast('¡Listo! Te enviamos un link a '+email);}
@@ -5352,6 +5382,7 @@ setMaxDateInputs();
 applyTabStyle(localStorage.getItem('jn_tab_style')||'b');
 initFirebase();
 checkLogin();
+checkTour();
 if(profile.name) {
   launchApp();
 } else {
