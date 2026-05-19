@@ -1765,7 +1765,7 @@ function initFirebase() {
         localStorage.setItem('jn_loggedin', '1');
         localStorage.removeItem('jn_pending_login');
         document.getElementById('loginModal').style.display = 'none';
-        // onAuthStateChanged ya va a llamar loadFromFirestore
+        loadFromFirestore(fbUser.uid);
         renderUserBadge(fbUser);
         showToast('¡Bienvenida, ' + (fbUser.displayName||'').split(' ')[0] + '! 🌸');
       }
@@ -1773,18 +1773,14 @@ function initFirebase() {
       if(err.code !== 'auth/no-auth-event') console.warn('Redirect error:', err);
     });
 
-    var firestoreLoaded = false;
     fbAuth.onAuthStateChanged(function(user) {
       fbUser = user;
       if(user) {
         localStorage.setItem('jn_loggedin', '1');
         if(document.getElementById('loginModal'))
           document.getElementById('loginModal').style.display = 'none';
-        if(!firestoreLoaded) {
-          firestoreLoaded = true;
-          loadFromFirestore(user.uid);
-          renderUserBadge(user);
-        }
+        loadFromFirestore(user.uid);
+        renderUserBadge(user);
       }
     });
   } catch(e) {
@@ -1818,7 +1814,7 @@ function signInWithGoogle() {
       fbUser = result.user;
       localStorage.setItem('jn_loggedin', '1');
       document.getElementById('loginModal').style.display = 'none';
-      // onAuthStateChanged ya va a llamar loadFromFirestore
+      loadFromFirestore(fbUser.uid);
       renderUserBadge(fbUser);
       showToast('¡Bienvenida, ' + (fbUser.displayName||'').split(' ')[0] + '! 🌸');
     }).catch(function(err) {
@@ -1880,13 +1876,11 @@ function loadFromFirestore(uid) {
       recalcCurDay();
       renderProfile();
       showToast('Datos sincronizados ✓');
-      // Si el onboarding ya fue completado (hay datos en localStorage), ir directo a la app
-      if(cycle1Date && profile.cycleLen && localStorage.getItem('jn_cycle1')) {
-        var appScreen = document.getElementById('screen-app');
-        if(appScreen && !appScreen.classList.contains('active')) {
-          launchApp(true); // sin confetti al re-login
-        }
-      }
+    }
+    // Lanzar app si el onboarding ya fue completado, sin importar si hay datos en Firestore
+    var appScreen = document.getElementById('screen-app');
+    if(appScreen && !appScreen.classList.contains('active') && localStorage.getItem('jn_cycle1')) {
+      launchApp(true);
     }
   }).catch(function(e) { console.warn('Load error:', e); });
 }
