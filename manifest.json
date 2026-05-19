@@ -2,7 +2,7 @@
   "name": "Cíclica by Jarana Natural",
   "short_name": "Cíclica",
   "description": "Tu diagrama menstrual digital. Conocete a través de tu ciclo.",
-  "start_url": "/",
+  "start_url": "/ciclica/",
   "display": "standalone",
   "background_color": "#FAF7F2",
   "theme_color": "#5F9595",
