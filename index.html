@@ -1758,21 +1758,6 @@ function initFirebase() {
     fbAuth = firebase.auth();
     fbDb = firebase.firestore();
 
-    // Manejar resultado de redirect (iOS Safari)
-    fbAuth.getRedirectResult().then(function(result) {
-      if(result && result.user) {
-        fbUser = result.user;
-        localStorage.setItem('jn_loggedin', '1');
-        localStorage.removeItem('jn_pending_login');
-        document.getElementById('loginModal').style.display = 'none';
-        loadFromFirestore(fbUser.uid);
-        renderUserBadge(fbUser);
-        showToast('¡Bienvenida, ' + (fbUser.displayName||'').split(' ')[0] + '! 🌸');
-      }
-    }).catch(function(err) {
-      if(err.code !== 'auth/no-auth-event') console.warn('Redirect error:', err);
-    });
-
     fbAuth.onAuthStateChanged(function(user) {
       fbUser = user;
       if(user) {
@@ -1788,10 +1773,6 @@ function initFirebase() {
   }
 }
 
-function isIosSafari() {
-  var ua = navigator.userAgent;
-  return /iP(ad|hone|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-}
 
 function signInWithGoogle() {
   const btn = document.getElementById('googleLoginBtn');
@@ -1804,12 +1785,8 @@ function signInWithGoogle() {
   if(btn) { btn.textContent = 'Conectando...'; btn.disabled = true; }
   const provider = new firebase.auth.GoogleAuthProvider();
 
-  if(isIosSafari()) {
-    // iOS Safari — usar redirect
-    localStorage.setItem('jn_pending_login', '1');
-    fbAuth.signInWithRedirect(provider);
-  } else {
-    // Android/Chrome — usar popup
+  // Usar popup en todos los dispositivos (redirect falla en Safari moderno)
+  {
     fbAuth.signInWithPopup(provider).then(function(result) {
       fbUser = result.user;
       localStorage.setItem('jn_loggedin', '1');
