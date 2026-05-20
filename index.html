@@ -4720,6 +4720,8 @@ function launchApp(skipConfetti) {
   if(!localStorage.getItem('jn_disclaimer_v4')) {
     setTimeout(()=>{ document.getElementById('welcomeModal').style.display='flex'; }, 800);
   }
+  // Tour solo en primer uso (no en re-login)
+  if(!skipConfetti) checkTour();
 }
 
 function closeAyuda(e) {
@@ -5361,7 +5363,6 @@ setMaxDateInputs();
 applyTabStyle(localStorage.getItem('jn_tab_style')||'b');
 initFirebase();
 checkLogin();
-checkTour();
 if(profile.name) {
   launchApp();
 } else {
