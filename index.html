@@ -1843,20 +1843,22 @@ function saveToFirestore() {
 function loadFromFirestore(uid) {
   if(!fbDb) return;
   fbDb.collection('users').doc(uid).get().then(function(doc) {
+    var hasData = false;
     if(doc.exists) {
       const data = doc.data();
       if(data.profile) profile = data.profile;
       if(data.dayData) dayData = data.dayData;
       if(data.cycleHistory) cycleHistory = data.cycleHistory;
-      if(data.cycle1Date) cycle1Date = new Date(data.cycle1Date);
+      if(data.cycle1Date) { cycle1Date = new Date(data.cycle1Date); hasData = true; }
       if(typeof TOTAL !== 'undefined' && profile.cycleLen) TOTAL = profile.cycleLen;
       recalcCurDay();
       renderProfile();
       showToast('Datos sincronizados ✓');
     }
-    // Lanzar app si el onboarding ya fue completado, sin importar si hay datos en Firestore
+    // Lanzar app si hay datos en Firestore O en localStorage
     var appScreen = document.getElementById('screen-app');
-    if(appScreen && !appScreen.classList.contains('active') && localStorage.getItem('jn_cycle1')) {
+    var onboardingDone = hasData || !!localStorage.getItem('jn_cycle1');
+    if(appScreen && !appScreen.classList.contains('active') && onboardingDone) {
       launchApp(true);
     }
   }).catch(function(e) { console.warn('Load error:', e); });
@@ -4701,6 +4703,8 @@ function recalcCurDay() {
 }
 function launchApp(skipConfetti) {
   if(!skipConfetti) setTimeout(launchConfetti, 100);
+  // Si es re-login, no mostrar el tour automáticamente
+  if(skipConfetti) localStorage.setItem('jn_tour_done', '1');
   document.getElementById('screen-onboarding').classList.remove('active');
   document.getElementById('screen-app').classList.add('active');
   if(profile.cycleLen) TOTAL=profile.cycleLen;
