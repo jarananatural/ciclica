@@ -802,7 +802,7 @@ body.tab-style-c .sub-tab.on::after{content:'';position:absolute;bottom:4px;left
   <div id="sub-ciclo">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem 1rem .1rem;">
       <div style="font-size:11px;color:var(--text-hint);" id="cycleNameLabel">Ciclo actual</div>
-      <div style="display:flex;gap:6px;"><button onclick="openAyudaDiagrama()" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--cream-dark);background:var(--cream-mid);color:var(--text-hint);cursor:pointer;font-family:var(--fb);" title="¿Qué es el diagrama?">?</button>
+      <div style="display:flex;gap:6px;" id="diagramBtns"><button onclick="openAyudaDiagrama()" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--cream-dark);background:var(--cream-mid);color:var(--text-hint);cursor:pointer;font-family:var(--fb);" title="¿Qué es el diagrama?">?</button>
       <button onclick="openShareModal()" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--cream-dark);background:var(--cream-mid);color:var(--text-hint);cursor:pointer;font-family:var(--fb);" title="Compartir mi ciclo">💌</button>
       <button id="lunaWheelBtn" onclick="toggleLunaWheel()" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--cream-dark);background:var(--cream-mid);color:var(--text-hint);cursor:pointer;font-family:var(--fb);">🌙 Lunas</button><button onclick="startNewCycle()" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--cream-dark);background:var(--cream-mid);color:var(--text-mid);cursor:pointer;font-family:var(--fb);">+ Nuevo ciclo</button></div>
     </div>
@@ -1901,7 +1901,7 @@ const TOUR_STEPS = [
     arrow: 'top', action: null
   },
   {
-    selector: '#lunaWheelBtn',
+    selector: '#diagramBtns',
     title: 'Botones del diagrama',
     desc: 'Activá las lunas, compartí tu ciclo o iniciá un nuevo período desde acá.',
     arrow: 'top', action: null
@@ -1981,6 +1981,7 @@ function renderTourStep() {
     el = document.querySelector(step.selector);
     if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
   }, 100);
+  var posDelay = step.selector === '#tourCanvasWrap' ? 800 : 400;
   setTimeout(function() {
     // Re-obtener el elemento por si cambió de display
     el = document.querySelector(step.selector);
@@ -2010,7 +2011,7 @@ function renderTourStep() {
     card.style.top = vy + 'px';
     card.style.left = '50%';
     card.style.transform = 'translateX(-50%)';
-  }, 400);
+  }, posDelay);
 }
 
 function tourNext() {
@@ -4716,12 +4717,13 @@ function launchApp(skipConfetti) {
   const iw = document.getElementById('irregularWarning');
   if(iw && profile.regularidad === 'Irregular') iw.style.display = 'block';
   if(cycleHistory.length>0) document.getElementById('cycleNameLabel').textContent='Ciclo '+currentCycleId;
-  // Show disclaimer
+  // Show disclaimer — si hay aviso, el tour espera a que se cierre
   if(!localStorage.getItem('jn_disclaimer_v4')) {
     setTimeout(()=>{ document.getElementById('welcomeModal').style.display='flex'; }, 800);
+    // Tour se lanza al cerrar el aviso (en welcomeFinish)
+  } else if(!skipConfetti) {
+    checkTour();
   }
-  // Tour solo en primer uso (no en re-login)
-  if(!skipConfetti) checkTour();
 }
 
 function closeAyuda(e) {
@@ -4946,6 +4948,8 @@ function welcomeFinish() {
     if(!localStorage.getItem('jn_loggedin') && Object.keys(dayData).length >= 3)
       document.getElementById('cloudBanner').style.display = 'block';
   }, 2000);
+  // Lanzar tour después de cerrar el aviso
+  checkTour();
 }
 function closeAyuda(e) {
   if(e.target === document.getElementById('welcomeModal')) welcomeFinish();
