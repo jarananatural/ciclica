@@ -2342,7 +2342,7 @@ function renderLuna() {
 // SECCIONES DINÁMICAS DEL REGISTRO DIARIO
 // ══════════════════════════════════════
 const SEC_COLOR = {
-  sint_menstrual:   {c:'#F07060', l:'#FFF0ED', name:'🌊 Ciclo menstrual'},
+  sint_menstrual:   {c:'#F07060', l:'#FFF0ED', name:'🩸 Sangrado menstrual'},
   sint_fisica:      {c:'#5F9595', l:'#EEF6F5', name:'🫧 Síntomas físicos'},
   sint_energia:     {c:'#F0BC66', l:'#FFF8EE', name:'⚡ Energía y sueño'},
   sint_emocional:   {c:'#9F77DD', l:'#F5EEFA', name:'😊 Emociones'},
@@ -2352,14 +2352,11 @@ const SEC_COLOR = {
   sint_alimentacion:{c:'#D4904A', l:'#FFF3E8', name:'🥗 Alimentación'},
 };
 
-const SINT_FISICOS = ['🤕 Dolor de cabeza','😤 Acné','💫 Mareo','🌸 Sensibilidad en mamas','🔙 Dolor lumbar','💪 Dolor muscular','🔴 Sarpullido','😣 Estreñimiento','🌊 Diarrea','😴 Fatiga','😤 Estrés','🍫 Antojos','😖 Cólicos','⚡ Calambres','🌙 Insomnio','🎈 Hinchazón','🤢 Náuseas','🤸 Torpeza'];
+const SINT_FISICOS = ['🤕 Dolor de cabeza','😤 Acné','💫 Mareo','🌸 Sensibilidad en mamas','🔙 Dolor lumbar','💪 Dolor muscular','🔴 Sarpullido','😣 Estreñimiento','🌊 Diarrea','😴 Fatiga','😤 Estrés','🍫 Antojos','😖 Cólicos','⚡ Calambres','🌙 Insomnio','🎈 Hinchazón','🤢 Náuseas','🤸 Torpeza','💧 Flujo vaginal'];
 const EMOCIONES    = ['😊 Alegría','😨 Miedo','😤 Furia','😢 Tristeza','💪 Confianza','😰 Ansiedad','🌟 Optimismo','🕊️ Serenidad','🌧️ Melancolía','💭 Distracción','😠 Irritación','👎 Desaprobación','🖤 Duelo','🤍 Aceptación','🌀 Desconcentración','🎢 Cambios de humor','⚡ Con energía','🌿 Calma','🌸 Con ganas de socializar','🌱 Prefiero pocas personas','🐚 Necesidad de soledad'];
 const SINT_ALIM    = ['🍽️ Más apetito','🚫 Menos apetito','🍬 Antojos dulces','🧂 Antojos salados','✅ Buena digestión','😣 Digestión pesada','🤢 Náuseas','💧 Mucha sed'];
 const MOCO_OPTS    = ['Sin moco','Cremoso','Acuoso','Elástico (tipo clara)','Seco'];
 const TEST_OVU     = ['Positivo','Negativo','No hice'];
-const CUELLO_POS   = ['Alto','Medio','Bajo'];
-const CUELLO_CONS  = ['Blando','Medio','Firme'];
-const CUELLO_APER  = ['Abierto','Entreabierto','Cerrado'];
 
 function secIsActive(id) {
   if(!profile.objetivos || profile.objetivos.length === 0) return true;
@@ -2443,10 +2440,6 @@ function buildSecHTML(id, col, active) {
     </div>
     <div class="e-lbl">Moco cervical</div><div class="chip-row" id="chips-moco"></div>
     <div class="e-lbl">Test de ovulación</div><div class="chip-row" id="chips-testovu"></div>
-    <div class="e-lbl" style="margin-top:14px;font-weight:700;color:var(--teal-dark);">🫀 Cuello uterino</div>
-    <div class="e-lbl" style="margin-top:6px;">Posición</div><div class="chip-row" id="chips-cuello-pos"></div>
-    <div class="e-lbl">Consistencia</div><div class="chip-row" id="chips-cuello-cons"></div>
-    <div class="e-lbl">Apertura</div><div class="chip-row" id="chips-cuello-aper"></div>
     <div class="e-lbl">Notas</div><textarea class="note-field" id="nota-sint_fertilidad" rows="2" placeholder="Otros signos..."></textarea>`;
 
   } else if(id === 'sint_alimentacion') {
@@ -2567,9 +2560,6 @@ function renderSecInternals(id) {
     if(document.getElementById('nota-sint_fertilidad')) document.getElementById('nota-sint_fertilidad').value = f.notas||'';
     buildChipsFor('chips-moco', MOCO_OPTS, new Set(f.moco ? [f.moco] : []), true);
     buildChipsFor('chips-testovu', TEST_OVU, new Set(f.test_ovu ? [f.test_ovu] : []), true);
-    buildChipsFor('chips-cuello-pos',  CUELLO_POS,  new Set(f.cuello_pos  ? [f.cuello_pos]  : []), true);
-    buildChipsFor('chips-cuello-cons', CUELLO_CONS, new Set(f.cuello_cons ? [f.cuello_cons] : []), true);
-    buildChipsFor('chips-cuello-aper', CUELLO_APER, new Set(f.cuello_aper ? [f.cuello_aper] : []), true);
   } else if(id === 'sint_alimentacion') {
     const al = day.sint_alimentacion || {};
     buildChipsFor('chips-sint_alimentacion', SINT_ALIM, new Set(al.chips||[]));
@@ -2674,9 +2664,6 @@ function saveSeccion(id) {
       temp: parseFloat(document.getElementById('input-temp')?.value)||0,
       moco: document.querySelector('#chips-moco .chip.sex-on')?.textContent||'',
       test_ovu: document.querySelector('#chips-testovu .chip.sex-on')?.textContent||'',
-      cuello_pos:  document.querySelector('#chips-cuello-pos .chip.sex-on')?.textContent||'',
-      cuello_cons: document.querySelector('#chips-cuello-cons .chip.sex-on')?.textContent||'',
-      cuello_aper: document.querySelector('#chips-cuello-aper .chip.sex-on')?.textContent||'',
       notas: document.getElementById('nota-sint_fertilidad')?.value||''};
   } else if(id === 'sint_alimentacion') {
     const chips = [...document.querySelectorAll('#chips-sint_alimentacion .chip.sex-on')].map(c=>c.textContent);
@@ -2746,7 +2733,7 @@ let entrenoActivo=false, intensidadSel=0, objetivoSel=null;
 let destrezaVals={Coordinación:0,Resistencia:0,Fuerza:0,Flexibilidad:0};
 
 // ══ DESEO Y SEXUALIDAD ══
-const METODOS_ANTICONCEP=['Pastillas','DIU hormonal','DIU de cobre','Implante','Inyectable','Parche','Anillo vaginal','Preservativo','Ligadura de trompas','Método sintotérmico','MELA','Ninguno','Otro'];
+const METODOS_ANTICONCEP=['Pastillas','DIU hormonal','DIU de cobre','Implante','Inyectable','Parche','Anillo vaginal','Ligadura de trompas','Método sintotérmico','MELA','Ninguno','Otro'];
 const METODOS_ETS=['Preservativo externo','Preservativo interno','Otro'];
 const CON_QUIEN=['Autoerotismo','Pareja estable','Otra persona','Prefiero no decir'];
 const COMO_SENTIDA=['Conexión','Presencia','Deseo','Bien','Desconexión','Incomodidad','Ansiedad','Libertad'];
@@ -3849,7 +3836,7 @@ function renderPatternResumen() {
 
   const stats = [
     {ic:'📅', label:'Días registrados', val: dias + ' de ' + TOTAL},
-    {ic:'🩸', label:'Días con sangrado', val: diasConFlujo + (diasConFlujo===1?' día':' días')},
+    {ic:'🩸', label:'Días con sangrado', val: diasConFlujo > 0 ? diasConFlujo + (diasConFlujo===1?' día':' días') : '~'+(profile.mensDays||5)+' días (según tu perfil)'},
     {ic:'📝', label:'Con registro detallado', val: diasConRegistro + (diasConRegistro===1?' día':' días')},
     {ic:'🔄', label:'Duración promedio del ciclo', val: avg + ' días' + (cycleHistory.length > 0 ? ' (real)' : ' (estimada)')  },
     {ic:'🥚', label:'Ovulación estimada', val: 'Día ' + fw.ovul},
@@ -4501,7 +4488,7 @@ function renderObStepInto(id){ obRender(); }
 
 
 const SECCIONES_DEF = [
-  {id:'sint_menstrual',   label:'Ciclo menstrual',    desc:'Sangrado, color, duración',        ic:'🌊'},
+  {id:'sint_menstrual',   label:'Sangrado menstrual',  desc:'Sangrado, color, duración',        ic:'🩸'},
   {id:'sint_fisica',      label:'Síntomas físicos',   desc:'Dolor, hinchazón, acné, náuseas',  ic:'🫧'},
   {id:'sint_energia',     label:'Energía y sueño',    desc:'Nivel de energía, horas de sueño', ic:'⚡'},
   {id:'sint_emocional',   label:'Emociones',          desc:'Humor, ansiedad, motivación',      ic:'😊'},
