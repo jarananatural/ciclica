@@ -645,6 +645,7 @@ body.tab-style-c .sub-tab.on::after{content:'';position:absolute;bottom:4px;left
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
@@ -918,10 +919,6 @@ body.tab-style-c .sub-tab.on::after{content:'';position:absolute;bottom:4px;left
       <div id="irregularPatternNote" style="display:none;margin:0 0 12px;padding:12px 16px;background:#FFF8EE;border-radius:var(--r-lg);border-left:3px solid #F0BC66;">
       <div style="font-size:12px;font-weight:700;color:#B8820A;">🌀 Tu ciclo es irregular o variable</div>
       <div style="font-size:11px;color:#B8820A;margin-top:4px;line-height:1.6;">Los patrones que se muestran aquí son orientativos. Con ciclos que varían, los análisis se vuelven más precisos con el tiempo. Seguí registrando — cada ciclo suma información valiosa sobre tu cuerpo.</div>
-    </div>
-      <div id="periPatternNote" style="display:none;margin:0 0 12px;padding:12px 16px;background:#FFF0F0;border-radius:var(--r-lg);border-left:3px solid #E08070;">
-      <div id="periPatternNoteTitle" style="font-size:12px;font-weight:700;color:#A05040;"></div>
-      <div id="periPatternNoteBody" style="font-size:11px;color:#A05040;margin-top:4px;line-height:1.6;"></div>
     </div>
     <div class="section-card"><div class="sc-title">📊 Este ciclo en números</div><div id="patternResumen"></div></div>
       <div class="section-card"><div class="sc-title">😊 Emociones más frecuentes</div><div id="patternEmociones"></div></div>
@@ -1299,6 +1296,7 @@ let curDay = 1, energyLevel = 0, selFlow = '', selColor = '';
 let symSel = new Set(), dayData = {}, calViewDate = new Date();
 let alarmOn = {copa:false,premens:false,fertil:false,ovul:false,record:false,agua:false,medico:false};
 let turnosMedicos = []; // [{id, tipo, fecha, hora, notas}]
+let gcalToken = null; // Google Calendar OAuth token
 let profile = {}, cycleHistory = [], currentCycleId = 1;
 let cycle1Date = null;
 let obStep = 0;
@@ -1375,21 +1373,6 @@ const PALETAS_DIAGRAMA = {
 function getPaleta() {
   return PALETAS_DIAGRAMA[localStorage.getItem('jn_paleta') || 'intenso'];
 }
-// ── HELPER MENOPAUSIA/PERIMENOPAUSIA ──
-function esPerioMeno() {
-  const conds = profile.condicionesSalud || [];
-  const etapa = profile.etapaVital || '';
-  return conds.includes('Perimenopausia') || etapa === 'Perimenopausia' || etapa === 'Menopausia';
-}
-function esMenopausia() {
-  const conds = profile.condicionesSalud || [];
-  const etapa = profile.etapaVital || '';
-  return conds.includes('Menopausia') || etapa === 'Menopausia / Post-menopausia';
-}
-function esPerimenopausia() {
-  return esPerioMeno() && !esMenopausia();
-}
-
 function getPhase(d) {
   const mensDays = profile.mensDays || 5;
   const pal = getPaleta().phases;
@@ -2113,26 +2096,6 @@ const GLOSARIO = {
     ic: '🌕', sub: 'Remanente del folículo',
     def: 'El cuerpo lúteo es la estructura que queda en el ovario después de que el folículo se rompe y libera el óvulo. Produce progesterona (y algo de estrógeno) para mantener el endometrio preparado. Si no hay fecundación, degenera después de unos 14 días, los niveles hormonales caen y comienza un nuevo ciclo.'
   },
-  'perimenopausia': {
-    ic: '🌅', sub: 'Transición hacia la menopausia',
-    def: 'La perimenopausia es la etapa de transición antes de la menopausia, que puede durar entre 2 y 10 años. Los ovarios producen estrógeno de forma fluctuante e impredecible, lo que genera ciclos irregulares, cambios de humor, sofocos y otros síntomas. Termina cuando se cumplen 12 meses consecutivos sin menstruación.'
-  },
-  'menopausia': {
-    ic: '🌸', sub: 'Fin de los ciclos menstruales',
-    def: 'La menopausia es el momento en que los ovarios dejan de liberar óvulos y la menstruación cesa definitivamente. Se diagnostica cuando pasaron 12 meses consecutivos sin menstruación. En Argentina, la edad promedio es alrededor de los 51 años. No es una enfermedad: es una etapa natural de la vida hormonal.'
-  },
-  'sofocos': {
-    ic: '🔥', sub: 'Oleadas de calor repentinas',
-    def: 'Los sofocos son sensaciones súbitas de calor intenso, generalmente en cara, cuello y pecho, que pueden durar entre 1 y 5 minutos. Son el síntoma más frecuente de la perimenopausia y menopausia, y se producen por los cambios en la regulación de temperatura que genera la caída del estrógeno sobre el hipotálamo.'
-  },
-  'trh': {
-    ic: '💊', sub: 'Terapia de reemplazo hormonal',
-    def: 'La TRH (Terapia de Reemplazo Hormonal) es un tratamiento médico que administra estrógeno (y en algunos casos progesterona) para aliviar síntomas de la menopausia y perimenopausia. Puede ser sistémica (pastillas, parches, gel) o local (cremas vaginales). Siempre debe indicarla y supervisarla un médico o ginecólogo.'
-  },
-  'menopausia-quirurgica': {
-    ic: '🏥', sub: 'Menopausia por extirpación de ovarios',
-    def: 'La menopausia quirúrgica ocurre cuando los ovarios son extirpados mediante cirugía (ooforectomía bilateral), lo que produce una caída hormonal inmediata y abrupta. A diferencia de la menopausia natural, los síntomas suelen ser más intensos por la rapidez del cambio. Requiere seguimiento médico especializado.'
-  },
 };
 
 function showGlos(key) {
@@ -2574,14 +2537,10 @@ function renderSecInternals(id) {
     return;
   }
   if(id === 'sint_fisica') {
-    const esPeri = esPerioMeno();
-    const sintFisicosExt = esPeri ? [...SINT_FISICOS, '🔥 Sofocos', '🌙 Sudoración nocturna', '💧 Sequedad vaginal', '💓 Palpitaciones', '🌡️ Cambios de temperatura', '🌫️ Niebla mental'] : SINT_FISICOS;
-    buildChipsFor('chips-sint_fisica', sintFisicosExt, new Set(day.sint_fisica?.chips||[]));
+    buildChipsFor('chips-sint_fisica', SINT_FISICOS, new Set(day.sint_fisica?.chips||[]));
   } else if(id === 'sint_emocional') {
     const emChips = day.sint_emocional?.chips || [...(symSel||[])];
-    const esPeriEm = esPerioMeno();
-    const emocionesExt = esPeriEm ? [...EMOCIONES, '⚡ Irritabilidad repentina', '🫧 Tristeza sin causa', '😰 Ansiedad nueva'] : EMOCIONES;
-    buildChipsFor('chips-sint_emocional', emocionesExt, new Set(emChips));
+    buildChipsFor('chips-sint_emocional', EMOCIONES, new Set(emChips));
   } else if(id === 'sint_libido') {
     renderDeseo(); renderSexChips();
     const sx = day.sint_libido || {};
@@ -3082,6 +3041,67 @@ function calPrev(){calViewDate.setMonth(calViewDate.getMonth()-1);renderCalendar
 function calNext(){calViewDate.setMonth(calViewDate.getMonth()+1);renderCalendar();}
 
 
+// ══ GOOGLE CALENDAR INTEGRATION ══
+const GCAL_CLIENT_ID = 'TU_CLIENT_ID_AQUI.apps.googleusercontent.com';
+const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+
+function requestGcalToken(callback) {
+  if(gcalToken) { callback(gcalToken); return; }
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: GCAL_CLIENT_ID,
+    scope: GCAL_SCOPE,
+    callback: (resp) => {
+      if(resp.error) { showToast('No se pudo conectar con Google Calendar'); return; }
+      gcalToken = resp.access_token;
+      callback(gcalToken);
+    }
+  });
+  client.requestAccessToken();
+}
+
+function addTurnoToGcal(turnoId) {
+  const t = turnosMedicos.find(x => x.id === turnoId);
+  if(!t) return;
+  requestGcalToken((token) => {
+    const start = t.hora
+      ? { dateTime: t.fecha + 'T' + t.hora + ':00', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+      : { date: t.fecha };
+    const end = t.hora
+      ? { dateTime: t.fecha + 'T' + ((() => { const [h,m]=t.hora.split(':'); const d=new Date(0,0,0,+h,+m+30); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); })())) + ':00', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+      : { date: t.fecha };
+    const event = {
+      summary: '🩺 ' + t.tipo,
+      description: t.notas || 'Turno agendado desde Cíclica by Jarana Natural',
+      start, end,
+      reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 1440 }, { method: 'popup', minutes: 60 }] }
+    };
+    fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(event)
+    })
+    .then(r => r.json())
+    .then(data => {
+      if(data.id) {
+        // Guardar el gcal event id en el turno
+        const idx = turnosMedicos.findIndex(x => x.id === turnoId);
+        if(idx >= 0) { turnosMedicos[idx].gcalId = data.id; save(); }
+        // Actualizar botón
+        const btn = document.querySelector('[data-gcal-tid="'+turnoId+'"]');
+        if(btn) { btn.textContent = '✓ En Google Calendar'; btn.style.color = '#3D9970'; btn.style.cursor = 'default'; btn.onclick = null; }
+        showToast('Turno agregado a Google Calendar ✓');
+      } else if(data.error?.status === 'UNAUTHENTICATED') {
+        gcalToken = null;
+        showToast('Sesión expirada, intentá de nuevo');
+      } else {
+        showToast('Error al agregar a Calendar');
+      }
+    })
+    .catch(() => showToast('Error de conexión'));
+  });
+}
+// ══ /GOOGLE CALENDAR INTEGRATION ══
+
 // ══ AGENDA DE TURNOS MÉDICOS ══
 function buildTurnosHTML() {
   const proximos = turnosMedicos
@@ -3111,6 +3131,11 @@ function buildTurnosHTML() {
       h += '</div>';
       h += '<div style="font-size:10px;font-weight:700;color:'+urgency+';white-space:nowrap;">'+(daysLeft===0?'Hoy':daysLeft===1?'Mañana':'en '+daysLeft+'d')+'</div>';
       h += '<div class="del-turno" data-tid="'+t.id+'" style="font-size:16px;cursor:pointer;color:var(--text-hint);padding:2px 4px;">×</div>';
+      h += '</div>';
+      // Botón Google Calendar
+      const yaEnGcal = t.gcalId;
+      h += '<div style="padding:0 10px 8px;">';
+      h += '<button data-gcal-tid="'+t.id+'" onclick="addTurnoToGcal(\''+t.id+'\')" style="font-size:11px;font-weight:700;font-family:var(--fb);border:none;background:none;cursor:'+(yaEnGcal?'default':'pointer')+';color:'+(yaEnGcal?'#3D9970':'#5F9595')+';padding:0;display:flex;align-items:center;gap:4px;">'+(yaEnGcal?'✓ En Google Calendar':'📅 Agregar a Google Calendar')+'</button>';
       h += '</div>';
     });
   }
@@ -3266,7 +3291,7 @@ function toggleAC(id) {
 }
 function toggleAlarmState(id){alarmOn[id]=!alarmOn[id];document.getElementById('tog-'+id).className='tog'+(alarmOn[id]?' on':'');save();drawWheel();renderAlerts();renderUpcoming();scheduleAlarmNotifications();scheduleCopa();}
 function saveAlarmCfg(id){
-  alarmOn[id]=true; document.getElementById('tog-'+id).className='tog on'; save();
+  save();
   const btn=document.querySelector('#body-'+id+' .save-alarm-btn');
   if(btn){btn.textContent='Guardado';btn.style.background='var(--teal-dark)';setTimeout(()=>{btn.textContent='Guardar';btn.style.background='var(--teal)';},1300);}
 }
@@ -3737,7 +3762,7 @@ function toggleAC(id) {
 }
 function toggleAlarmState(id){alarmOn[id]=!alarmOn[id];document.getElementById('tog-'+id).className='tog'+(alarmOn[id]?' on':'');save();drawWheel();renderAlerts();renderUpcoming();}
 function saveAlarmCfg(id){
-  alarmOn[id]=true; document.getElementById('tog-'+id).className='tog on'; save();
+  save();
   const btn=document.querySelector('#body-'+id+' .save-alarm-btn');
   if(btn){btn.textContent='Guardado';btn.style.background='var(--teal-dark)';setTimeout(()=>{btn.textContent='Guardar';btn.style.background='var(--teal)';},1300);}
 }
@@ -3762,22 +3787,8 @@ function renderUpcoming() {
 // ══ PATTERNS ══
 function renderPatterns() {
   const irreg = profile.regularidad === 'Irregular' || profile.regularidad === 'No sé';
-  const esPeri = esPerioMeno();
   const note = document.getElementById('irregularPatternNote');
-  if(note) note.style.display = (irreg && !esPeri) ? 'block' : 'none';
-  const periNote = document.getElementById('periPatternNote');
-  if(periNote) {
-    periNote.style.display = esPeri ? 'block' : 'none';
-    if(esPeri) {
-      const isMeno = esMenopausia();
-      const titleEl = document.getElementById('periPatternNoteTitle');
-      const bodyEl  = document.getElementById('periPatternNoteBody');
-      if(titleEl) titleEl.textContent = isMeno ? '🌸 Estás en menopausia' : '🌅 Estás en perimenopausia';
-      if(bodyEl)  bodyEl.textContent  = isMeno
-        ? 'Los ciclos ya cesaron, así que las fases y predicciones no aplican. Lo más valioso ahora es el registro de síntomas, energía y sueño: te dan tu propio mapa de bienestar en esta etapa.'
-        : 'Durante la perimenopausia los ciclos pueden ser muy variables. Las fases estimadas son orientativas. Lo más valioso es el registro de síntomas: sofocos, humor, energía y sueño te dan un mapa propio de tu transición hormonal.';
-    }
-  }
+  if(note) note.style.display = irreg ? 'block' : 'none';
 
   renderPatternResumen();
   renderPatternEmociones();
@@ -4228,7 +4239,7 @@ function openModalSalud(){
   s1('Tuviste abortos?',['Si','No','Prefiero no decir'],'abortos');
   s1('Esta en tus planes ser mama?',['Si','No','Tal vez','Ya soy mama'],'maternidad');
   s1('Cuando empezo la menopausia de tu mama o abuela?',['Antes de los 45','Entre 45 y 50','Entre 50 y 55','Despues de los 55','No se'],'menopausiaFamiliar');
-  sm('Tenes alguna condicion vinculada al ciclo?',['Endometriosis','Ovario poliquístico (SOP)','Síndrome premenstrual (SPM)','PMDD','Amenorrea','Dismenorrea','Migraña menstrual','Hipotiroidismo','Hipertiroidismo','Perimenopausia','Menopausia','Otra','Ninguna','Prefiero no decir'],'condicionesSalud');
+  sm('Tenes alguna condicion vinculada al ciclo?',['Endometriosis','Ovario poliquístico (SOP)','Síndrome premenstrual (SPM)','PMDD','Amenorrea','Dismenorrea','Migraña menstrual','Hipotiroidismo','Hipertiroidismo','Perimenopausia','Otra','Ninguna','Prefiero no decir'],'condicionesSalud');
   document.getElementById('modalSalud').style.display='flex';
 }
 function saveModalSalud(){
@@ -4333,15 +4344,13 @@ function openHealthModal(){
   inp('¿Cuándo fue tu primera menstruación?','hf-primera','number','Año o edad (ej: 2010 o 12)',profile.primeraAnio);
   single('¿Tu ciclo es...?',['Regular','Irregular','No sé'],'regularidad');
   const eb=document.createElement('div');eb.className='explain-box';eb.style.marginTop='-4px';eb.innerHTML='<strong>Regular:</strong> 21–35 días, consistente. <strong>Irregular:</strong> varía mucho o tiene ausencias.';c.appendChild(eb);
-  single('¿En qué etapa de tu vida hormonal estás?',['Ciclos activos','Perimenopausia','Menopausia / Post-menopausia','No sé'],'etapaVital');
-  const ebm=document.createElement('div');ebm.className='explain-box';ebm.style.marginTop='-4px';ebm.innerHTML='<strong>Perimenopausia:</strong> ciclos irregulares, en transición. <strong>Menopausia:</strong> 12+ meses sin menstruación.';c.appendChild(ebm);
   single('¿Tuviste embarazos?',['Sí, uno','Sí, más de uno','No'],'embarazos');
   single('¿Tuviste abortos?',['Sí','No','Prefiero no decir'],'abortos');
   single('¿Está en tus planes ser mamá?',['Sí','No','Tal vez','Ya soy mamá'],'maternidad');
   single('¿Cuándo empezó la menopausia de tu mamá o abuela?',['Antes de los 45','Entre 45 y 50','Entre 50 y 55','Después de los 55','No sé'],'menopausiaFamiliar');
 
   sec('Condiciones de salud');
-  multi('¿Tenés alguna condición vinculada al ciclo?',['Endometriosis','Ovario poliquístico (SOP)','Síndrome premenstrual (SPM)','PMDD','Amenorrea','Dismenorrea','Migraña menstrual','Hipotiroidismo','Hipertiroidismo','Perimenopausia','Menopausia','Otra','Ninguna','Prefiero no decir'],'condicionesSalud');
+  multi('¿Tenés alguna condición vinculada al ciclo?',['Endometriosis','Ovario poliquístico (SOP)','Síndrome premenstrual (SPM)','PMDD','Amenorrea','Dismenorrea','Migraña menstrual','Hipotiroidismo','Hipertiroidismo','Perimenopausia','Otra','Ninguna','Prefiero no decir'],'condicionesSalud');
 
   sec('Métodos de gestión');
   multi('¿Cómo gestionás tu menstruación?',['Copa menstrual','Disco menstrual','Tampón','Toallita descartable','Toallita de tela','Bombacha menstrual','Esponja marina','Sangrado libre'],'metodos');
@@ -4447,9 +4456,6 @@ function buildHealthTab() {
   single('¿Tu ciclo es...?', ['Regular','Irregular','No sé'], 'regularidad');
   const eb = document.createElement('div'); eb.className = 'explain-box'; eb.style.marginTop = '-4px';
   eb.innerHTML = '<strong>Regular:</strong> 21–35 días, consistente. <strong>Irregular:</strong> varía mucho o tiene ausencias.'; c.appendChild(eb);
-  single('¿En qué etapa de tu vida hormonal estás?', ['Ciclos activos','Perimenopausia','Menopausia / Post-menopausia','No sé'], 'etapaVital');
-  const ebm2 = document.createElement('div'); ebm2.className = 'explain-box'; ebm2.style.marginTop = '-4px';
-  ebm2.innerHTML = '<strong>Perimenopausia:</strong> ciclos irregulares, en transición. <strong>Menopausia:</strong> 12+ meses sin menstruación.'; c.appendChild(ebm2);
   single('¿Tuviste embarazos?', ['Sí, uno','Sí, más de uno','No'], 'embarazos');
   single('¿Tuviste abortos?', ['Sí','No','Prefiero no decir'], 'abortos');
   single('¿Está en tus planes ser mamá?', ['Sí','No','Tal vez','Ya soy mamá'], 'maternidad');
@@ -4457,7 +4463,7 @@ function buildHealthTab() {
 
   sec('Condiciones de salud');
   multi('¿Tenés alguna condición vinculada al ciclo?',
-    ['Endometriosis','Ovario poliquístico (SOP)','Síndrome premenstrual (SPM)','PMDD','Amenorrea','Dismenorrea','Migraña menstrual','Hipotiroidismo','Hipertiroidismo','Perimenopausia','Menopausia','Otra','Ninguna','Prefiero no decir'], 'condicionesSalud');
+    ['Endometriosis','Ovario poliquístico (SOP)','Síndrome premenstrual (SPM)','PMDD','Amenorrea','Dismenorrea','Migraña menstrual','Hipotiroidismo','Hipertiroidismo','Perimenopausia','Otra','Ninguna','Prefiero no decir'], 'condicionesSalud');
 
   sec('Métodos de gestión');
   multi('¿Cómo gestionás tu menstruación?',
@@ -5138,100 +5144,13 @@ function renderHormoneBar(val, color) {
 }
 
 function showHormoneInfo() {
-  const el = document.getElementById('hormoneContent');
-  if(!el) return;
-  glosifyReset();
-
-  // Panel especial para menopausia o perimenopausia
-  const esPeri = esPerioMeno();
-  if(esPeri) {
-    const esMeno = esMenopausia();
-    if(esMeno) {
-      // ── MENOPAUSIA ──
-      el.innerHTML =
-        '<div style="text-align:center;margin-bottom:14px;">' +
-          '<div style="font-size:34px;margin-bottom:6px;">🌸</div>' +
-          '<div style="font-family:var(--fd);font-size:19px;color:#7A6060;">Menopausia</div>' +
-          '<div style="font-size:11px;color:var(--text-hint);margin-top:2px;">Tu cuerpo en una nueva etapa</div>' +
-        '</div>' +
-        '<div style="background:#F5F0FC;border-radius:var(--r-md);padding:12px 14px;margin-bottom:12px;font-size:13px;color:var(--text-mid);line-height:1.65;">' +
-          glosify('En la menopausia los ciclos menstruales ya cesaron. Los ovarios producen muy poco estrógeno y progesterona. No hay fases de ciclo, pero sí hay ritmos propios: energía, síntomas, bienestar y cuidados que siguen su propio patrón.') +
-        '</div>' +
-        '<div style="margin-bottom:12px;">' +
-          '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">🧬 Hormonas en esta etapa</div>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-            '<div style="background:var(--cream);border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#D4604A;">Estrógeno</div><div style="font-size:11px;color:var(--text-mid);margin-top:4px;line-height:1.5;">Muy bajo y estable. La principal fuente son ahora las glándulas suprarrenales y el tejido graso.</div></div>' +
-            '<div style="background:var(--cream);border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#B8820A;">Progesterona</div><div style="font-size:11px;color:var(--text-mid);margin-top:4px;line-height:1.5;">Casi ausente. Sin ovulación, no se produce cuerpo lúteo.</div></div>' +
-            '<div style="background:var(--cream);border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#5F9595;">FSH</div><div style="font-size:11px;color:var(--text-mid);margin-top:4px;line-height:1.5;">Elevada de forma permanente. El cerebro sigue intentando estimular los ovarios.</div></div>' +
-            '<div style="background:var(--cream);border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#7A6060;">LH</div><div style="font-size:11px;color:var(--text-mid);margin-top:4px;line-height:1.5;">También elevada y estable. Ya no hay picos ni ciclos.</div></div>' +
-          '</div>' +
-        '</div>' +
-        '<div style="margin-bottom:12px;">' +
-          '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">🌡️ Síntomas frecuentes</div>' +
-          '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
-            ['🔥 Sofocos','🌙 Sudoración nocturna','💧 Sequedad vaginal','🦴 Salud ósea','💓 Palpitaciones','🌫️ Niebla mental','🌙 Insomnio','😔 Cambios de humor','💪 Cambios en músculo'].map(function(s){ return '<span style="font-size:11px;background:var(--cream-dark);border-radius:20px;padding:3px 9px;color:var(--text-dark);">'+s+'</span>'; }).join('') +
-          '</div>' +
-        '</div>' +
-        '<div style="display:flex;gap:8px;margin-bottom:14px;">' +
-          '<div style="flex:1;background:var(--cream-mid);border-radius:var(--r-md);padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">⚡ Energía</div><div style="font-size:12px;color:var(--text-dark);">Más estable que en la perimenopausia. Puede haber variaciones según sueño, estrés y TRH.</div></div>' +
-          '<div style="flex:1;background:var(--cream-mid);border-radius:var(--r-md);padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">🌿 Jarana sugiere</div><div style="font-size:12px;color:var(--text-dark);">Registrar síntomas, sueño y bienestar general te ayuda a ver tus propios patrones.</div></div>' +
-        '</div>' +
-        '<div style="font-size:11px;color:var(--text-soft);line-height:1.6;border-top:1px solid var(--cream-dark);padding-top:10px;">' +
-          '<strong style="color:var(--text-mid);">⚠️ Esta información es orientativa.</strong> ' +
-          'La menopausia es una etapa muy individual. Consultá con tu ginecólogo/a para evaluar síntomas, riesgo óseo y opciones como la TRH.<br><br>' +
-          '<span style="font-size:10px;color:var(--text-hint);">Basado en el libro de Jarana Natural &middot; &ldquo;Hoy comienza un nuevo ciclo&rdquo;</span>' +
-        '</div>';
-      document.getElementById('hormoneModal').style.display = 'flex';
-      el.innerHTML = glosifyFinalize(el.innerHTML);
-      el.querySelectorAll('.glos-term').forEach(function(t){ t.onclick = function(){ showGlos(t.dataset.glos); }; });
-      return;
-    }
-    // ── PERIMENOPAUSIA ──
-    if(true) {
-    el.innerHTML =
-      '<div style="text-align:center;margin-bottom:14px;">' +
-        '<div style="font-size:34px;margin-bottom:6px;">🌅</div>' +
-        '<div style="font-family:var(--fd);font-size:19px;color:#7A6060;">Transición hormonal</div>' +
-        '<div style="font-size:11px;color:var(--text-hint);margin-top:2px;">Perimenopausia</div>' +
-      '</div>' +
-      '<div style="background:#FFF5F0;border-radius:var(--r-md);padding:12px 14px;margin-bottom:12px;font-size:13px;color:var(--text-mid);line-height:1.65;">' +
-        glosify('Durante la perimenopausia, los ovarios producen estrógeno de forma irregular y fluctuante. Esto genera ciclos impredecibles: algunos más cortos, otros más largos, algunos sin ovulación. Tu cuerpo está en transición, no en falla.') +
-      '</div>' +
-      '<div style="margin-bottom:12px;">' +
-        '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;">🧬 Qué pasa con tus hormonas</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-          '<div style="background:var(--cream);border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#D4604A;">Estrógeno</div><div style="font-size:11px;color:var(--text-mid);margin-top:4px;line-height:1.5;">Fluctúa. Puede subir y bajar sin patrón fijo, causando sofocos, cambios de humor e insomnio.</div></div>' +
-          '<div style="background:var(--cream);border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#B8820A;">Progesterona</div><div style="font-size:11px;color:var(--text-mid);margin-top:4px;line-height:1.5;">Baja progresivamente. Sin ovulación, no hay cuerpo lúteo que la produzca.</div></div>' +
-          '<div style="background:var(--cream);border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#5F9595;">FSH</div><div style="font-size:11px;color:var(--text-mid);margin-top:4px;line-height:1.5;">Sube. El cerebro intenta estimular más a los ovarios ante la menor respuesta.</div></div>' +
-          '<div style="background:var(--cream);border-radius:10px;padding:8px 10px;"><div style="font-size:10px;font-weight:700;color:#7A6060;">LH</div><div style="font-size:11px;color:var(--text-mid);margin-top:4px;line-height:1.5;">También sube. Los picos de LH se vuelven menos predecibles.</div></div>' +
-        '</div>' +
-      '</div>' +
-      '<div style="margin-bottom:12px;">' +
-        '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hint);margin-bottom:5px;">🌡️ Síntomas frecuentes</div>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
-          ['🔥 Sofocos','🌙 Sudoración nocturna','💓 Palpitaciones','💧 Sequedad vaginal','🌫️ Niebla mental','🌙 Insomnio','⚡ Irritabilidad','😔 Cambios de humor','📅 Ciclos irregulares'].map(function(s){ return '<span style="font-size:11px;background:var(--cream-dark);border-radius:20px;padding:3px 9px;color:var(--text-dark);">'+s+'</span>'; }).join('') +
-        '</div>' +
-      '</div>' +
-      '<div style="display:flex;gap:8px;margin-bottom:14px;">' +
-        '<div style="flex:1;background:var(--cream-mid);border-radius:var(--r-md);padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">⚡ Energía</div><div style="font-size:12px;color:var(--text-dark);">Variable, puede cambiar de un día al otro. La escucha activa del cuerpo es clave.</div></div>' +
-        '<div style="flex:1;background:var(--cream-mid);border-radius:var(--r-md);padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">🌿 Jarana sugiere</div><div style="font-size:12px;color:var(--text-dark);">Registrar síntomas día a día ayuda a identificar patrones y conversarlos con tu médico.</div></div>' +
-      '</div>' +
-      '<div style="font-size:11px;color:var(--text-soft);line-height:1.6;border-top:1px solid var(--cream-dark);padding-top:10px;">' +
-        '<strong style="color:var(--text-mid);">⚠️ Esta información es orientativa.</strong> ' +
-        'La experiencia de la perimenopausia es muy individual. Consultá con tu ginecólogo/a para una evaluación personalizada.<br><br>' +
-        '<span style="font-size:10px;color:var(--text-hint);">Basado en el libro de Jarana Natural &middot; &ldquo;Hoy comienza un nuevo ciclo&rdquo;</span>' +
-      '</div>';
-    document.getElementById('hormoneModal').style.display = 'flex';
-    el.innerHTML = glosifyFinalize(el.innerHTML);
-    el.querySelectorAll('.glos-term').forEach(function(t){ t.onclick = function(){ showGlos(t.dataset.glos); }; });
-    return;
-    } // fin if(true) peri
-  } // fin if(esPeri)
-
   const fase = getCuerpoHoy(curDay, TOTAL);
   const info = CUERPO_HOY[fase];
   const ph = getPhase(curDay);
+  const el = document.getElementById('hormoneContent');
+  if(!el) return;
   const h = info.hormonas;
+  glosifyReset();
 
   el.innerHTML =
     // Header
