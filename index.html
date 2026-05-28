@@ -714,7 +714,7 @@ body.tab-style-c .sub-tab.on::after{content:'';position:absolute;bottom:4px;left
     <div class="fg">
       <label class="fl">¿Cuántos días dura tu sangrado?</label>
       <div class="num-row">
-        <input class="fi" id="ob-mens-days" type="number" min="1" max="9" value="5">
+        <input class="fi" id="ob-mens-days" type="number" min="1" max="10" value="5">
         <span>días (habitualmente entre 2 y 7)</span>
       </div>
     </div>
@@ -1404,7 +1404,6 @@ function drawWheel() {
     const sa=((d-1)/TOTAL)*2*Math.PI-Math.PI/2+gap;
     const ea=(d/TOTAL)*2*Math.PI-Math.PI/2-gap;
     const ph=getPhase(d), isSel=d===curDay, hasData=!!dayData[d];
-    const fw=getFertWindow(); const isFert=alarmOn.fertil&&d>=fw.start&&d<=fw.end, isPre=alarmOn.premens&&d>=TOTAL-3;
     ctx.beginPath();
     ctx.moveTo(cx+iR*Math.cos(sa),cy+iR*Math.sin(sa));
     ctx.arc(cx,cy,oR,sa,ea); ctx.arc(cx,cy,iR,ea,sa,true); ctx.closePath();
@@ -1418,8 +1417,6 @@ function drawWheel() {
       ctx.fillStyle = isSel ? ph.color : hasData ? ph.light : ph.light+'55';
     }
     ctx.fill();
-    if(isFert&&!isSel){ctx.strokeStyle='#5F9595';ctx.lineWidth=2.5;ctx.stroke();}
-    if(isPre &&!isSel){ctx.strokeStyle='#FFB7A1';ctx.lineWidth=2;  ctx.stroke();}
     const ma=((d-.5)/TOTAL)*2*Math.PI-Math.PI/2;
     const lr=(oR+iR)/2;
     ctx.save(); ctx.translate(cx+lr*Math.cos(ma),cy+lr*Math.sin(ma)); ctx.rotate(ma+Math.PI/2);
@@ -4564,8 +4561,6 @@ function obNextStatic() {
   if(md) { const mdN = parseInt(md); if(mdN < 1 || mdN > 15) { showToast('⚠️ Los días de sangrado deben estar entre 1 y 15'); return; } profile.mensDays = mdN; }
   const noSabe = document.getElementById('ob-noSabe')?.checked;
   if(noSabe) profile.regularidad = 'Irregular';
-  // Si no se seleccionó nada, dejar 'Regular' por default
-  if(!profile.regularidad) profile.regularidad = 'Regular';
   document.getElementById('ob-step-0').style.display = 'none';
   document.getElementById('ob-step-js').style.display = 'block';
   obStep = 0;
@@ -4692,7 +4687,6 @@ function recalcCurDay() {
   }
 }
 function launchApp() {
-  localStorage.setItem('jn_launched', '1');
   setTimeout(launchConfetti, 100);
   document.getElementById('screen-onboarding').classList.remove('active');
   document.getElementById('screen-app').classList.add('active');
@@ -5351,7 +5345,7 @@ applyTabStyle(localStorage.getItem('jn_tab_style')||'b');
 initFirebase();
 checkLogin();
 checkTour();
-if(localStorage.getItem('jn_launched') || profile.name) {
+if(profile.name) {
   launchApp();
 } else {
   // Pre-fill static form with any saved data
