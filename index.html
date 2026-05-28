@@ -645,7 +645,6 @@ body.tab-style-c .sub-tab.on::after{content:'';position:absolute;bottom:4px;left
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
@@ -1049,6 +1048,11 @@ body.tab-style-c .sub-tab.on::after{content:'';position:absolute;bottom:4px;left
       <div id="ajustesTour"></div>
     </div>
     <div class="pc-section">
+      <div class="pc-label">Apoyá Cíclica ☕</div>
+      <div style="font-size:11px;color:var(--text-hint);margin-bottom:10px;line-height:1.5;">Cíclica es gratuita y siempre lo será. Si te resulta útil, podés invitarnos un cafecito para seguir mejorándola 💚</div>
+      <a href="https://cafecito.app/jarananatural" target="_blank" rel="noopener" style="display:block;width:100%;text-align:center;padding:11px;border-radius:var(--r-lg);background:#FFD166;color:#5A3700;font-size:13px;font-weight:700;font-family:var(--fb);text-decoration:none;">☕ Invitarnos un cafecito</a>
+    </div>
+    <div class="pc-section">
       <div class="pc-label">Cuenta</div>
       <div id="ajustesCuentaInfo" style="margin-bottom:10px;font-size:12px;color:var(--text-hint);"></div>
       <button onclick="signOut()" style="width:100%;padding:10px;border:1.5px solid var(--cream-dark);border-radius:var(--r-lg);background:white;color:var(--text-hint);font-size:12px;font-weight:700;font-family:var(--fb);cursor:pointer;">Cerrar sesión</button>
@@ -1296,7 +1300,6 @@ let curDay = 1, energyLevel = 0, selFlow = '', selColor = '';
 let symSel = new Set(), dayData = {}, calViewDate = new Date();
 let alarmOn = {copa:false,premens:false,fertil:false,ovul:false,record:false,agua:false,medico:false};
 let turnosMedicos = []; // [{id, tipo, fecha, hora, notas}]
-let gcalToken = null; // Google Calendar OAuth token
 let profile = {}, cycleHistory = [], currentCycleId = 1;
 let cycle1Date = null;
 let obStep = 0;
@@ -1842,6 +1845,7 @@ function saveToFirestore() {
     dayData: dayData,
     cycleHistory: cycleHistory,
     cycle1Date: cycle1Date ? cycle1Date.toISOString() : null,
+    alarmOn: alarmOn,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true }).then(function() {
     showSyncBanner();
@@ -1857,9 +1861,12 @@ function loadFromFirestore(uid) {
       if(data.dayData) dayData = data.dayData;
       if(data.cycleHistory) cycleHistory = data.cycleHistory;
       if(data.cycle1Date) cycle1Date = new Date(data.cycle1Date);
+      if(data.alarmOn) alarmOn = {...alarmOn, ...data.alarmOn};
       if(typeof TOTAL !== 'undefined' && profile.cycleLen) TOTAL = profile.cycleLen;
       recalcCurDay();
       renderProfile();
+      drawWheel(); renderDayCard(); renderPhaseRow(); renderAlerts(); updatePhaseBanner();
+      if(typeof renderLuna === 'function') renderLuna();
       showToast('Datos sincronizados ✓');
     }
   }).catch(function(e) { console.warn('Load error:', e); });
@@ -2113,36 +2120,6 @@ function closeGlos(e) {
 }
 
 // Convierte texto plano en HTML con términos del glosario marcados
-function glosify(text) {
-  const terms = {
-    'hormonas': 'hormonas', 'hormona': 'hormonas',
-    'LH': 'lh', 'luteinizante': 'lh',
-    'FSH': 'fsh', 'foliculoestimulante': 'fsh', 'folículo estimulante': 'fsh',
-    'hipófisis': 'hipofisis', 'hipofisis': 'hipofisis',
-    'útero': 'utero', 'utero': 'utero',
-    'endometrio': 'endometrio',
-    'ovarios': 'ovarios', 'ovario': 'ovarios',
-    'estrógeno': 'estrogeno', 'estrogeno': 'estrogeno', 'estrógenos': 'estrogeno',
-    'progesterona': 'progesterona',
-    'glándulas mamarias': 'glandulas-mamarias', 'mamas': 'glandulas-mamarias',
-    'folículo': 'foliculo', 'folículos': 'foliculo', 'foliculo': 'foliculo',
-    'cuerpo lúteo': 'cuerpo-luteo', 'cuerpo luteo': 'cuerpo-luteo',
-  };
-  // Ordenar por longitud descendente para que "cuerpo lúteo" se procese antes que "lúteo"
-  const sorted = Object.keys(terms).sort((a,b) => b.length - a.length);
-  let result = text;
-  sorted.forEach(term => {
-    const key = terms[term];
-    const re = new RegExp('(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-    result = result.replace(re, function(m){ return '<span class="glos-term" data-glos="' + key + '" onclick="showGlos(\'' + key + '\')">' + m + '</span>'; });
-  });
-  return result;
-}
-
-// Glosario: marca cada término UNA SOLA VEZ en todo el panel
-// seen se resetea por cada llamada a glosifyAll
-var _glosSeen = {};
-function glosifyReset() { _glosSeen = {}; }
 
 function glosify(text) {
   // Pares [texto a buscar, clave del glosario] — orden: más largo primero
@@ -2359,6 +2336,9 @@ const EMOCIONES    = ['😊 Alegría','😨 Miedo','😤 Furia','😢 Tristeza',
 const SINT_ALIM    = ['🍽️ Más apetito','🚫 Menos apetito','🍬 Antojos dulces','🧂 Antojos salados','✅ Buena digestión','😣 Digestión pesada','🤢 Náuseas','💧 Mucha sed'];
 const MOCO_OPTS    = ['Sin moco','Cremoso','Acuoso','Elástico (tipo clara)','Seco'];
 const TEST_OVU     = ['Positivo','Negativo','No hice'];
+const CERV_POS     = ['Baja','Media','Alta'];
+const CERV_CONS    = ['Dura','Intermedia','Blanda'];
+const CERV_APER    = ['Cerrado','Entreabierto','Abierto'];
 
 function secIsActive(id) {
   if(!profile.objetivos || profile.objetivos.length === 0) return true;
@@ -2442,6 +2422,9 @@ function buildSecHTML(id, col, active) {
     </div>
     <div class="e-lbl">Moco cervical</div><div class="chip-row" id="chips-moco"></div>
     <div class="e-lbl">Test de ovulación</div><div class="chip-row" id="chips-testovu"></div>
+    <div class="e-lbl">🫀 Cérvix — posición</div><div class="chip-row" id="chips-cerv-pos"></div>
+    <div class="e-lbl">Cérvix — consistencia</div><div class="chip-row" id="chips-cerv-cons"></div>
+    <div class="e-lbl">Cérvix — apertura</div><div class="chip-row" id="chips-cerv-aper"></div>
     <div class="e-lbl">Notas</div><textarea class="note-field" id="nota-sint_fertilidad" rows="2" placeholder="Otros signos..."></textarea>`;
 
   } else if(id === 'sint_alimentacion') {
@@ -2562,6 +2545,9 @@ function renderSecInternals(id) {
     if(document.getElementById('nota-sint_fertilidad')) document.getElementById('nota-sint_fertilidad').value = f.notas||'';
     buildChipsFor('chips-moco', MOCO_OPTS, new Set(f.moco ? [f.moco] : []), true);
     buildChipsFor('chips-testovu', TEST_OVU, new Set(f.test_ovu ? [f.test_ovu] : []), true);
+    buildChipsFor('chips-cerv-pos',  CERV_POS,  new Set(f.cerv_pos  ? [f.cerv_pos]  : []), true);
+    buildChipsFor('chips-cerv-cons', CERV_CONS, new Set(f.cerv_cons ? [f.cerv_cons] : []), true);
+    buildChipsFor('chips-cerv-aper', CERV_APER, new Set(f.cerv_aper ? [f.cerv_aper] : []), true);
   } else if(id === 'sint_alimentacion') {
     const al = day.sint_alimentacion || {};
     buildChipsFor('chips-sint_alimentacion', SINT_ALIM, new Set(al.chips||[]));
@@ -2666,6 +2652,9 @@ function saveSeccion(id) {
       temp: parseFloat(document.getElementById('input-temp')?.value)||0,
       moco: document.querySelector('#chips-moco .chip.sex-on')?.textContent||'',
       test_ovu: document.querySelector('#chips-testovu .chip.sex-on')?.textContent||'',
+      cerv_pos:  document.querySelector('#chips-cerv-pos .chip.sex-on')?.textContent||'',
+      cerv_cons: document.querySelector('#chips-cerv-cons .chip.sex-on')?.textContent||'',
+      cerv_aper: document.querySelector('#chips-cerv-aper .chip.sex-on')?.textContent||'',
       notas: document.getElementById('nota-sint_fertilidad')?.value||''};
   } else if(id === 'sint_alimentacion') {
     const chips = [...document.querySelectorAll('#chips-sint_alimentacion .chip.sex-on')].map(c=>c.textContent);
@@ -2908,11 +2897,143 @@ function loadSex(){
   if(sx){setSexRel(sx.relaciones);if(sx.metodo_anticoncep!==null&&sx.metodo_anticoncep!==undefined)setSexMac(sx.metodo_anticoncep);}
   else{document.getElementById('sexRelSi').className='obj-btn si';document.getElementById('sexRelNo').className='obj-btn no';document.getElementById('sexMetodoWrap').style.display='none';document.getElementById('sexMetodoList').style.display='none';}
   renderDeseo(); renderSexChips();
+// ══ PATTERNS ══
+// ══ HISTORIAL DE CICLOS ══
+const PHASE_COLORS_H = ['#FFB7A1','#F0BC66','#5F9595','#AAB8BB'];
+
+function openHistorial() {
+  renderHistCycleList();
+  document.getElementById('histDetail').classList.remove('open');
+  document.getElementById('histCycleList').style.display = '';
+  document.getElementById('histOverlay').classList.add('open');
 }
+function closeHistorial() {
+  document.getElementById('histOverlay').classList.remove('open');
+}
+function closeHistorialIfBg(e) {
+  if(e.target === document.getElementById('histOverlay')) closeHistorial();
+}
+function backToHistList() {
+  document.getElementById('histDetail').classList.remove('open');
+  document.getElementById('histCycleList').style.display = '';
+}
+
+function renderHistCycleList() {
+  const list = document.getElementById('histCycleList');
+  // Ciclo actual
+  const allCycles = [];
+  if(cycle1Date) {
+    allCycles.push({
+      name: 'Ciclo actual',
+      startDate: cycle1Date.toISOString(),
+      totalDays: TOTAL,
+      data: dayData,
+      isCurrent: true
+    });
+  }
+  cycleHistory.forEach(c => allCycles.push(c));
+
+  if(allCycles.length === 0) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--text-hint);padding:14px 0;">Todavía no hay ciclos registrados.</p>';
+    return;
+  }
+  list.innerHTML = '';
+  allCycles.forEach((c, i) => {
+    const d = new Date(c.startDate);
+    const dr = Object.keys(c.data||{}).length;
+    const item = document.createElement('div');
+    item.className = 'hcl-item';
+    item.innerHTML = `
+      <div>
+        <div class="hcl-name">${c.name}${c.isCurrent ? ' <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#EEF6F5;color:var(--teal-dark);vertical-align:middle;">actual</span>' : ''}</div>
+        <div class="hcl-meta">Inicio: ${d.toLocaleDateString('es-AR')} · ${dr} días registrados</div>
+      </div>
+      <span class="hcl-badge">${c.totalDays || TOTAL} días</span>`;
+    item.onclick = () => openHistCycle(c);
+    list.appendChild(item);
+  });
+}
+
+function openHistCycle(cycle) {
+  document.getElementById('histCycleList').style.display = 'none';
+  const detail = document.getElementById('histDetail');
+  detail.classList.add('open');
+
+  const d = new Date(cycle.startDate);
+  document.getElementById('hdCycleTitle').textContent = cycle.name;
+  document.getElementById('hdCycleSub').textContent =
+    'Inicio: ' + d.toLocaleDateString('es-AR', {day:'numeric',month:'long',year:'numeric'}) +
+    ' · ' + (cycle.totalDays || TOTAL) + ' días de ciclo';
+
+  // Limpiar selección
+  document.getElementById('hdDayDetail').innerHTML = '<div class="hdd-empty">Tocá un día para ver el detalle</div>';
+
+  // Construir calendario
+  const cal = document.getElementById('hdCal');
+  cal.innerHTML = '';
+  const total = cycle.totalDays || TOTAL;
+  const data = cycle.data || {};
+
+  for(let day = 1; day <= total; day++) {
+    const dayInfo = data[day];
+    const ph = Math.ceil(day / (total/4));
+    const baseColor = PHASE_COLORS_H[Math.min(ph-1,3)];
+    const flowColor = dayInfo && dayInfo.flow ? FLOW_COLORS[dayInfo.flow] || baseColor : null;
+    const bg = flowColor || (dayInfo ? baseColor : 'var(--cream-dark)');
+    const dot = document.createElement('div');
+    dot.className = 'hd-dot' + (dayInfo ? ' has-data' : '');
+    dot.style.background = bg;
+    dot.style.color = dayInfo ? 'var(--text-dark)' : 'var(--text-hint)';
+    dot.textContent = day;
+    dot.onclick = () => {
+      cal.querySelectorAll('.hd-dot').forEach(d => d.classList.remove('selected'));
+      dot.classList.add('selected');
+      renderHdDayDetail(day, dayInfo);
+    };
+    cal.appendChild(dot);
+  }
+}
+
+function renderHdDayDetail(day, info) {
+  const box = document.getElementById('hdDayDetail');
+  if(!info) {
+    box.innerHTML = `<div class="hdd-title">Día ${day}</div><div class="hdd-empty">Sin registro para este día</div>`;
+    return;
+  }
+  let html = `<div class="hdd-title">Día ${day}</div>`;
+
+  if(info.flow) html += `<div class="hdd-row"><span class="hdd-ic">🩸</span><span>Flujo: <strong>${info.flow}</strong></span></div>`;
+  if(info.color) html += `<div class="hdd-row"><span class="hdd-ic">🎨</span><span>Color: <strong>${info.color}</strong></span></div>`;
+  if(info.energy) html += `<div class="hdd-row"><span class="hdd-ic">⚡</span><span>Energía: <strong>${info.energy}/4</strong></span></div>`;
+  if(info.symptoms && info.symptoms.length > 0)
+    html += `<div class="hdd-row"><span class="hdd-ic">💬</span><span>Síntomas: <strong>${info.symptoms.join(', ')}</strong></span></div>`;
+  if(info.tags && info.tags.length > 0)
+    html += `<div class="hdd-row"><span class="hdd-ic">🏷️</span><span>Etiquetas: <strong>${info.tags.join(', ')}</strong></span></div>`;
+  if(info.deporte && info.deporte.activo) {
+    const dep = info.deporte;
+    let deText = dep.actividad || 'Entrenamiento';
+    if(dep.duracion_min > 0) deText += ` · ${dep.duracion_min} min`;
+    html += `<div class="hdd-row"><span class="hdd-ic">🤸</span><span>${deText}</span></div>`;
+  }
+  if(info.sexualidad && info.sexualidad.activo) {
+    const sx = info.sexualidad;
+    const deseoLabels=['Bajo','Medio','Alto','Muy alto'];
+    if(sx.deseo) html += `<div class="hdd-row"><span class="hdd-ic">💜</span><span>Deseo: <strong>${deseoLabels[sx.deseo-1]||''}</strong></span></div>`;
+    if(sx.relaciones===true) html += `<div class="hdd-row"><span class="hdd-ic">🌸</span><span>Relaciones · ${sx.metodo_anticoncep?'con método: '+[...sx.metodos||[]].join(', '):'sin método'}</span></div>`;
+    if(sx.como_sentida&&sx.como_sentida.length) html += `<div class="hdd-row"><span class="hdd-ic">✨</span><span>${sx.como_sentida.join(' · ')}</span></div>`;
+  }
+  if(info.diary) html += `<div class="hdd-row"><span class="hdd-ic">📝</span><span style="font-style:italic;color:var(--text-hint);">"${info.diary.slice(0,80)}${info.diary.length>80?'…':''}"</span></div>`;
+
+  if(html === `<div class="hdd-title">Día ${day}</div>`)
+    html += '<div class="hdd-empty">Sin datos registrados</div>';
+
+  box.innerHTML = html;
+}
+// ══ /HISTORIAL ══
 
 function saveDay() {
   const isEdit = !!dayData[curDay];
-  dayData[curDay]={flow:selFlow,color:selColor,energy:energyLevel,symptoms:[...symSel],tags:[...currentTags],diary:document.getElementById('diaryField')?.value||'',date:new Date().toISOString()};
+  dayData[curDay]={...(dayData[curDay]||{}),flow:selFlow,color:selColor,energy:energyLevel,symptoms:[...symSel],tags:[...currentTags],diary:document.getElementById('diaryField')?.value||'',date:new Date().toISOString()};
   save(); drawWheel();
   const btn=document.getElementById('saveBtn');
   btn.textContent='¡Guardado!'; btn.style.background='var(--teal-dark)';
@@ -2921,6 +3042,8 @@ function saveDay() {
   // Sacar el banner de edición
   const b = document.getElementById('editDayBanner');
   if(b) b.remove();
+  // Cafecito modal cada 60 días
+  maybShowCafecitoModal();
 }
 
 // ══ ALERTS ══
@@ -3041,67 +3164,6 @@ function calPrev(){calViewDate.setMonth(calViewDate.getMonth()-1);renderCalendar
 function calNext(){calViewDate.setMonth(calViewDate.getMonth()+1);renderCalendar();}
 
 
-// ══ GOOGLE CALENDAR INTEGRATION ══
-const GCAL_CLIENT_ID = 'TU_CLIENT_ID_AQUI.apps.googleusercontent.com';
-const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
-
-function requestGcalToken(callback) {
-  if(gcalToken) { callback(gcalToken); return; }
-  const client = google.accounts.oauth2.initTokenClient({
-    client_id: GCAL_CLIENT_ID,
-    scope: GCAL_SCOPE,
-    callback: (resp) => {
-      if(resp.error) { showToast('No se pudo conectar con Google Calendar'); return; }
-      gcalToken = resp.access_token;
-      callback(gcalToken);
-    }
-  });
-  client.requestAccessToken();
-}
-
-function addTurnoToGcal(turnoId) {
-  const t = turnosMedicos.find(x => x.id === turnoId);
-  if(!t) return;
-  requestGcalToken((token) => {
-    const start = t.hora
-      ? { dateTime: t.fecha + 'T' + t.hora + ':00', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
-      : { date: t.fecha };
-    const end = t.hora
-      ? { dateTime: t.fecha + 'T' + ((() => { const [h,m]=t.hora.split(':'); const d=new Date(0,0,0,+h,+m+30); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); })())) + ':00', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
-      : { date: t.fecha };
-    const event = {
-      summary: '🩺 ' + t.tipo,
-      description: t.notas || 'Turno agendado desde Cíclica by Jarana Natural',
-      start, end,
-      reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 1440 }, { method: 'popup', minutes: 60 }] }
-    };
-    fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify(event)
-    })
-    .then(r => r.json())
-    .then(data => {
-      if(data.id) {
-        // Guardar el gcal event id en el turno
-        const idx = turnosMedicos.findIndex(x => x.id === turnoId);
-        if(idx >= 0) { turnosMedicos[idx].gcalId = data.id; save(); }
-        // Actualizar botón
-        const btn = document.querySelector('[data-gcal-tid="'+turnoId+'"]');
-        if(btn) { btn.textContent = '✓ En Google Calendar'; btn.style.color = '#3D9970'; btn.style.cursor = 'default'; btn.onclick = null; }
-        showToast('Turno agregado a Google Calendar ✓');
-      } else if(data.error?.status === 'UNAUTHENTICATED') {
-        gcalToken = null;
-        showToast('Sesión expirada, intentá de nuevo');
-      } else {
-        showToast('Error al agregar a Calendar');
-      }
-    })
-    .catch(() => showToast('Error de conexión'));
-  });
-}
-// ══ /GOOGLE CALENDAR INTEGRATION ══
-
 // ══ AGENDA DE TURNOS MÉDICOS ══
 function buildTurnosHTML() {
   const proximos = turnosMedicos
@@ -3131,11 +3193,6 @@ function buildTurnosHTML() {
       h += '</div>';
       h += '<div style="font-size:10px;font-weight:700;color:'+urgency+';white-space:nowrap;">'+(daysLeft===0?'Hoy':daysLeft===1?'Mañana':'en '+daysLeft+'d')+'</div>';
       h += '<div class="del-turno" data-tid="'+t.id+'" style="font-size:16px;cursor:pointer;color:var(--text-hint);padding:2px 4px;">×</div>';
-      h += '</div>';
-      // Botón Google Calendar
-      const yaEnGcal = t.gcalId;
-      h += '<div style="padding:0 10px 8px;">';
-      h += '<button data-gcal-tid="'+t.id+'" onclick="addTurnoToGcal(\''+t.id+'\')" style="font-size:11px;font-weight:700;font-family:var(--fb);border:none;background:none;cursor:'+(yaEnGcal?'default':'pointer')+';color:'+(yaEnGcal?'#3D9970':'#5F9595')+';padding:0;display:flex;align-items:center;gap:4px;">'+(yaEnGcal?'✓ En Google Calendar':'📅 Agregar a Google Calendar')+'</button>';
       h += '</div>';
     });
   }
@@ -3291,478 +3348,7 @@ function toggleAC(id) {
 }
 function toggleAlarmState(id){alarmOn[id]=!alarmOn[id];document.getElementById('tog-'+id).className='tog'+(alarmOn[id]?' on':'');save();drawWheel();renderAlerts();renderUpcoming();scheduleAlarmNotifications();scheduleCopa();}
 function saveAlarmCfg(id){
-  save();
-  const btn=document.querySelector('#body-'+id+' .save-alarm-btn');
-  if(btn){btn.textContent='Guardado';btn.style.background='var(--teal-dark)';setTimeout(()=>{btn.textContent='Guardar';btn.style.background='var(--teal)';},1300);}
-}
-function renderUpcoming() {
-  const c=document.getElementById('upcomingEvts'); if(!c) return; c.innerHTML='';
-  const evs=[];
-  const dtf=daysToFertStart(curDay);
-  const dtp=curDay<TOTAL-3?TOTAL-3-curDay:0;
-  const dtm=TOTAL-curDay+1;
-  if(alarmOn.fertil&&dtf>0) evs.push({label:'Inicio ventana fértil',days:dtf,bg:'#EEF6F5',tc:'#3D7070'});
-  if(alarmOn.fertil&&inFertWindow(curDay)) evs.push({label:'Ventana fértil activa',days:0,bg:'#EEF6F5',tc:'#3D7070'});
-  if(alarmOn.premens&&dtp>0) evs.push({label:'Aviso pre-menstrual',days:dtp,bg:'#FFF0ED',tc:'#D4604A'});
-  evs.push({label:'Próxima menstruación estimada',days:dtm,bg:'#FFF0ED',tc:'#D4604A'});
-  evs.slice(0,4).forEach(ev=>{
-    const d=document.createElement('div'); d.className='upcoming-ev'; d.style.background=ev.bg;
-    const ds=ev.days===0?'Hoy':ev.days===1?'Mañana':'En '+ev.days+' días';
-    d.innerHTML='<span style="font-size:12px;font-weight:700;color:'+ev.tc+';">'+ev.label+'</span><span style="font-size:11px;color:'+ev.tc+';">'+ds+'</span>';
-    c.appendChild(d);
-  });
-}
-
-// ══ PATTERNS ══
-// ══ HISTORIAL DE CICLOS ══
-const PHASE_COLORS_H = ['#FFB7A1','#F0BC66','#5F9595','#AAB8BB'];
-
-function openHistorial() {
-  renderHistCycleList();
-  document.getElementById('histDetail').classList.remove('open');
-  document.getElementById('histCycleList').style.display = '';
-  document.getElementById('histOverlay').classList.add('open');
-}
-function closeHistorial() {
-  document.getElementById('histOverlay').classList.remove('open');
-}
-function closeHistorialIfBg(e) {
-  if(e.target === document.getElementById('histOverlay')) closeHistorial();
-}
-function backToHistList() {
-  document.getElementById('histDetail').classList.remove('open');
-  document.getElementById('histCycleList').style.display = '';
-}
-
-function renderHistCycleList() {
-  const list = document.getElementById('histCycleList');
-  // Ciclo actual
-  const allCycles = [];
-  if(cycle1Date) {
-    allCycles.push({
-      name: 'Ciclo actual',
-      startDate: cycle1Date.toISOString(),
-      totalDays: TOTAL,
-      data: dayData,
-      isCurrent: true
-    });
-  }
-  cycleHistory.forEach(c => allCycles.push(c));
-
-  if(allCycles.length === 0) {
-    list.innerHTML = '<p style="font-size:12px;color:var(--text-hint);padding:14px 0;">Todavía no hay ciclos registrados.</p>';
-    return;
-  }
-  list.innerHTML = '';
-  allCycles.forEach((c, i) => {
-    const d = new Date(c.startDate);
-    const dr = Object.keys(c.data||{}).length;
-    const item = document.createElement('div');
-    item.className = 'hcl-item';
-    item.innerHTML = `
-      <div>
-        <div class="hcl-name">${c.name}${c.isCurrent ? ' <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#EEF6F5;color:var(--teal-dark);vertical-align:middle;">actual</span>' : ''}</div>
-        <div class="hcl-meta">Inicio: ${d.toLocaleDateString('es-AR')} · ${dr} días registrados</div>
-      </div>
-      <span class="hcl-badge">${c.totalDays || TOTAL} días</span>`;
-    item.onclick = () => openHistCycle(c);
-    list.appendChild(item);
-  });
-}
-
-function openHistCycle(cycle) {
-  document.getElementById('histCycleList').style.display = 'none';
-  const detail = document.getElementById('histDetail');
-  detail.classList.add('open');
-
-  const d = new Date(cycle.startDate);
-  document.getElementById('hdCycleTitle').textContent = cycle.name;
-  document.getElementById('hdCycleSub').textContent =
-    'Inicio: ' + d.toLocaleDateString('es-AR', {day:'numeric',month:'long',year:'numeric'}) +
-    ' · ' + (cycle.totalDays || TOTAL) + ' días de ciclo';
-
-  // Limpiar selección
-  document.getElementById('hdDayDetail').innerHTML = '<div class="hdd-empty">Tocá un día para ver el detalle</div>';
-
-  // Construir calendario
-  const cal = document.getElementById('hdCal');
-  cal.innerHTML = '';
-  const total = cycle.totalDays || TOTAL;
-  const data = cycle.data || {};
-
-  for(let day = 1; day <= total; day++) {
-    const dayInfo = data[day];
-    const ph = Math.ceil(day / (total/4));
-    const baseColor = PHASE_COLORS_H[Math.min(ph-1,3)];
-    const flowColor = dayInfo && dayInfo.flow ? FLOW_COLORS[dayInfo.flow] || baseColor : null;
-    const bg = flowColor || (dayInfo ? baseColor : 'var(--cream-dark)');
-    const dot = document.createElement('div');
-    dot.className = 'hd-dot' + (dayInfo ? ' has-data' : '');
-    dot.style.background = bg;
-    dot.style.color = dayInfo ? 'var(--text-dark)' : 'var(--text-hint)';
-    dot.textContent = day;
-    dot.onclick = () => {
-      cal.querySelectorAll('.hd-dot').forEach(d => d.classList.remove('selected'));
-      dot.classList.add('selected');
-      renderHdDayDetail(day, dayInfo);
-    };
-    cal.appendChild(dot);
-  }
-}
-
-function renderHdDayDetail(day, info) {
-  const box = document.getElementById('hdDayDetail');
-  if(!info) {
-    box.innerHTML = `<div class="hdd-title">Día ${day}</div><div class="hdd-empty">Sin registro para este día</div>`;
-    return;
-  }
-  let html = `<div class="hdd-title">Día ${day}</div>`;
-
-  if(info.flow) html += `<div class="hdd-row"><span class="hdd-ic">🩸</span><span>Flujo: <strong>${info.flow}</strong></span></div>`;
-  if(info.color) html += `<div class="hdd-row"><span class="hdd-ic">🎨</span><span>Color: <strong>${info.color}</strong></span></div>`;
-  if(info.energy) html += `<div class="hdd-row"><span class="hdd-ic">⚡</span><span>Energía: <strong>${info.energy}/4</strong></span></div>`;
-  if(info.symptoms && info.symptoms.length > 0)
-    html += `<div class="hdd-row"><span class="hdd-ic">💬</span><span>Síntomas: <strong>${info.symptoms.join(', ')}</strong></span></div>`;
-  if(info.tags && info.tags.length > 0)
-    html += `<div class="hdd-row"><span class="hdd-ic">🏷️</span><span>Etiquetas: <strong>${info.tags.join(', ')}</strong></span></div>`;
-  if(info.deporte && info.deporte.activo) {
-    const dep = info.deporte;
-    let deText = dep.actividad || 'Entrenamiento';
-    if(dep.duracion_min > 0) deText += ` · ${dep.duracion_min} min`;
-    html += `<div class="hdd-row"><span class="hdd-ic">🤸</span><span>${deText}</span></div>`;
-  }
-  if(info.sexualidad && info.sexualidad.activo) {
-    const sx = info.sexualidad;
-    const deseoLabels=['Bajo','Medio','Alto','Muy alto'];
-    if(sx.deseo) html += `<div class="hdd-row"><span class="hdd-ic">💜</span><span>Deseo: <strong>${deseoLabels[sx.deseo-1]||''}</strong></span></div>`;
-    if(sx.relaciones===true) html += `<div class="hdd-row"><span class="hdd-ic">🌸</span><span>Relaciones · ${sx.metodo_anticoncep?'con método: '+[...sx.metodos||[]].join(', '):'sin método'}</span></div>`;
-    if(sx.como_sentida&&sx.como_sentida.length) html += `<div class="hdd-row"><span class="hdd-ic">✨</span><span>${sx.como_sentida.join(' · ')}</span></div>`;
-  }
-  if(info.diary) html += `<div class="hdd-row"><span class="hdd-ic">📝</span><span style="font-style:italic;color:var(--text-hint);">"${info.diary.slice(0,80)}${info.diary.length>80?'…':''}"</span></div>`;
-
-  if(html === `<div class="hdd-title">Día ${day}</div>`)
-    html += '<div class="hdd-empty">Sin datos registrados</div>';
-
-  box.innerHTML = html;
-}
-// ══ /HISTORIAL ══
-
-function saveDay() {
-  const isEdit = !!dayData[curDay];
-  dayData[curDay]={flow:selFlow,color:selColor,energy:energyLevel,symptoms:[...symSel],tags:[...currentTags],diary:document.getElementById('diaryField')?.value||'',date:new Date().toISOString()};
-  save(); drawWheel();
-  const btn=document.getElementById('saveBtn');
-  btn.textContent='¡Guardado!'; btn.style.background='var(--teal-dark)';
-  setTimeout(()=>{btn.textContent='Guardar registro del día';btn.style.background='var(--teal)';},1500);
-  if(isEdit) showToast('Registro del día ' + curDay + ' actualizado ✓');
-  // Sacar el banner de edición
-  const b = document.getElementById('editDayBanner');
-  if(b) b.remove();
-}
-
-// ══ ALERTS ══
-function renderAlerts() {
-  const area=document.getElementById('alertArea'); if(!area) return; area.innerHTML='';
-  const banners=[];
-  if(alarmOn.copa&&curDay>=1&&curDay<=5) banners.push({bg:'#FFF0ED',dot:'#FFB7A1',tc:'#D4604A',title:'Recordatorio de copa',sub:'¿Tenés la copa puesta? Revisá o retirá.'});
-  if(alarmOn.premens&&curDay>=TOTAL-3) banners.push({bg:'#FFF0ED',dot:'#FFB7A1',tc:'#D4604A',title:'Se acerca tu menstruación',sub:'Estimada en '+(TOTAL-curDay+1)+' día'+(TOTAL-curDay+1!==1?'s':'')+'. Momento de descanso.'});
-  if(alarmOn.fertil&&inFertWindow(curDay)) banners.push({bg:'#EEF6F5',dot:'#5F9595',tc:'#3D7070',title:'Ventana fértil activa',sub:'Estás en tus días de mayor fertilidad estimada.'});
-  banners.forEach(b=>{
-    const d=document.createElement('div');
-    d.className='abanner'; d.style.background=b.bg;
-    d.innerHTML='<div class="ab-dot" style="background:'+b.dot+';"></div><div class="ab-body"><div class="ab-title" style="color:'+b.tc+';">'+b.title+'</div><div class="ab-sub" style="color:'+b.tc+';">'+b.sub+'</div></div><button class="ab-x" onclick="this.parentNode.remove()">×</button>';
-    area.appendChild(d);
-  });
-}
-
-// ══ CALENDAR ══
-function renderCalendar() {
-  const y=calViewDate.getFullYear(),m=calViewDate.getMonth();
-  document.getElementById('calMonth').textContent=MONTHS[m]+' '+y;
-  const head=document.getElementById('calHead'); head.innerHTML='';
-  DAYS_ES.forEach(d=>{const el=document.createElement('div');el.className='cal-dow';el.textContent=d;head.appendChild(el);});
-  const grid=document.getElementById('calGrid'); grid.innerHTML='';
-  const first=new Date(y,m,1).getDay(), daysInMonth=new Date(y,m+1,0).getDate(), today=new Date();
-  for(let i=0;i<first;i++){const e=document.createElement('div');e.className='cal-day';grid.appendChild(e);}
-  for(let d=1;d<=daysInMonth;d++){
-    const el=document.createElement('div'); el.className='cal-day'; el.textContent=d;
-    const dateObj=new Date(y,m,d);
-    if(dateObj.toDateString()===today.toDateString()) el.classList.add('today');
-    if(cycle1Date){
-      const diff=Math.floor((dateObj-cycle1Date)/(86400000));
-      if(diff>=0&&diff<(profile.mensDays||5)) el.classList.add('mens');
-      else { const fw2=getFertWindow(); if(diff>=fw2.start-1&&diff<=fw2.end-1) el.classList.add('fertile'); }
-      const next=new Date(cycle1Date); next.setDate(next.getDate()+TOTAL);
-      const dn=Math.floor((dateObj-next)/(86400000));
-      if(dn>=0&&dn<(profile.mensDays||5)) el.classList.add('predicted');
-    }
-    grid.appendChild(el);
-  }
-  renderPrediction();
-}
-function getCycleAvg() {
-  // Calcula duración promedio real usando el historial de ciclos guardados
-  if(cycleHistory.length < 2) return TOTAL;
-  // Ordenar por fecha de inicio
-  const sorted = [...cycleHistory].filter(c => c.startDate).sort((a,b) => new Date(a.startDate)-new Date(b.startDate));
-  const durations = [];
-  for(let i = 1; i < sorted.length; i++) {
-    const d1 = new Date(sorted[i-1].startDate);
-    const d2 = new Date(sorted[i].startDate);
-    const diff = Math.round((d2 - d1) / 86400000);
-    if(diff >= 15 && diff <= 60) durations.push(diff); // ignorar valores raros
-  }
-  // Incluir el ciclo actual si tenemos la fecha
-  if(sorted.length > 0 && cycle1Date) {
-    const last = new Date(sorted[sorted.length-1].startDate);
-    const diff = Math.round((cycle1Date - last) / 86400000);
-    if(diff >= 15 && diff <= 60) durations.push(diff);
-  }
-  if(durations.length === 0) return TOTAL;
-  return Math.round(durations.reduce((a,b) => a+b, 0) / durations.length);
-}
-
-function getCycleVariability() {
-  if(cycleHistory.length < 3) return null;
-  const sorted = [...cycleHistory].filter(c => c.startDate).sort((a,b) => new Date(a.startDate)-new Date(b.startDate));
-  const durations = [];
-  for(let i = 1; i < sorted.length; i++) {
-    const diff = Math.round((new Date(sorted[i].startDate) - new Date(sorted[i-1].startDate)) / 86400000);
-    if(diff >= 15 && diff <= 60) durations.push(diff);
-  }
-  if(durations.length < 2) return null;
-  const avg = durations.reduce((a,b) => a+b, 0) / durations.length;
-  const variance = durations.reduce((s,d) => s + Math.pow(d-avg,2), 0) / durations.length;
-  return Math.round(Math.sqrt(variance));
-}
-
-function renderPrediction() {
-  const pc=document.getElementById('predCard'); if(!pc) return;
-  if(!cycle1Date){pc.innerHTML='<p style="font-size:12px;color:var(--text-hint);">Configurá la fecha del Día 1 en tu perfil.</p>';return;}
-
-  const avgLen = getCycleAvg();
-  const variab = getCycleVariability();
-  const cyclesUsed = cycleHistory.length;
-  const ovulDay = Math.round(avgLen - 14);
-
-  const next = new Date(cycle1Date); next.setDate(next.getDate() + avgLen);
-  const nextEarly = new Date(cycle1Date); nextEarly.setDate(nextEarly.getDate() + avgLen - (variab||0));
-  const nextLate = new Date(cycle1Date);  nextLate.setDate(nextLate.getDate()  + avgLen + (variab||0));
-  const fs = new Date(cycle1Date); fs.setDate(fs.getDate() + ovulDay - 4);
-  const fe = new Date(cycle1Date); fe.setDate(fe.getDate() + ovulDay + 2);
-  const ovul = new Date(cycle1Date); ovul.setDate(ovul.getDate() + ovulDay);
-  const daysTo = Math.ceil((next - new Date()) / 86400000);
-
-  // Etiqueta de precisión según cantidad de ciclos
-  let precLabel = '', precColor = '#AAA';
-  if(cyclesUsed === 0) { precLabel = 'Basado en tu duración ingresada'; precColor = '#AAA'; }
-  else if(cyclesUsed === 1) { precLabel = 'Basado en 1 ciclo registrado'; precColor = '#F0BC66'; }
-  else if(cyclesUsed < 4) { precLabel = 'Basado en ' + cyclesUsed + ' ciclos · mejorando'; precColor = '#5F9595'; }
-  else { precLabel = 'Basado en ' + cyclesUsed + ' ciclos ✓'; precColor = '#3D9970'; }
-
-  // Rango de predicción si hay variabilidad
-  const nextStr = variab && variab > 1
-    ? formatDate(nextEarly) + ' – ' + formatDate(nextLate)
-    : formatDate(next);
-
-  pc.innerHTML =
-    '<div class="pred-title">📅 Próximas fechas estimadas</div>' +
-    '<div style="font-size:10px;padding:4px 8px;border-radius:10px;background:'+precColor+'22;color:'+precColor+';font-weight:700;display:inline-block;margin-bottom:10px;">'+precLabel+'</div>' +
-    '<div class="pred-row"><span class="pred-label">Próxima menstruación</span><span class="pred-val">'+nextStr+'</span></div>' +
-    '<div class="pred-row"><span class="pred-label">Días hasta la próxima</span><span class="pred-val">'+(daysTo>0?daysTo+' días':'¡Muy pronto!')+'</span></div>' +
-    '<div class="pred-row"><span class="pred-label">Ventana fértil</span><span class="pred-val">'+fs.getDate()+'–'+fe.getDate()+' de '+MONTHS[fe.getMonth()].toLowerCase()+'</span></div>' +
-    '<div class="pred-row" style="border-bottom:none;"><span class="pred-label">Ovulación estimada</span><span class="pred-val">'+formatDate(ovul)+'</span></div>' +
-    (variab && variab > 2 ? '<div style="font-size:10px;color:var(--text-hint);margin-top:8px;line-height:1.5;">Tu ciclo varía ±'+variab+' días. El rango se irá ajustando con más registros.</div>' : '');
-}
-function calPrev(){calViewDate.setMonth(calViewDate.getMonth()-1);renderCalendar();}
-function calNext(){calViewDate.setMonth(calViewDate.getMonth()+1);renderCalendar();}
-
-
-// ══ AGENDA DE TURNOS MÉDICOS ══
-function buildTurnosHTML() {
-  const proximos = turnosMedicos
-    .filter(t => new Date(t.fecha + 'T12:00') >= new Date(new Date().setHours(0,0,0,0)))
-    .sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
-  const pasados = turnosMedicos
-    .filter(t => new Date(t.fecha + 'T12:00') < new Date(new Date().setHours(0,0,0,0)))
-    .sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
-
-  let h = '<div style="margin-bottom:10px;">';
-
-  // Lista de turnos próximos
-  if(proximos.length === 0) {
-    h += '<div style="font-size:12px;color:var(--text-hint);text-align:center;padding:8px 0;">No tenés turnos próximos</div>';
-  } else {
-    proximos.forEach(t => {
-      const d = new Date(t.fecha + 'T12:00');
-      const dStr = d.toLocaleDateString("es-AR", {weekday:"short",day:"numeric",month:"short"});
-      const msLeft = d - new Date();
-      const daysLeft = Math.ceil(msLeft / 86400000);
-      const urgency = daysLeft <= 1 ? '#E84040' : daysLeft <= 3 ? '#F0BC66' : '#3D9970';
-      h += '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-md);background:var(--cream);border:1px solid var(--cream-dark);margin-bottom:6px;">';
-      h += '<div style="text-align:center;min-width:36px;"><div style="font-size:15px;">🩺</div></div>';
-      h += '<div style="flex:1;"><div style="font-size:12px;font-weight:700;color:var(--text-dark);">'+t.tipo+'</div>';
-      h += '<div style="font-size:11px;color:var(--text-soft);">'+dStr+(t.hora?' · '+t.hora:'')+'</div>';
-      if(t.notas) h += '<div style="font-size:10px;color:var(--text-hint);margin-top:2px;">'+t.notas+'</div>';
-      h += '</div>';
-      h += '<div style="font-size:10px;font-weight:700;color:'+urgency+';white-space:nowrap;">'+(daysLeft===0?'Hoy':daysLeft===1?'Mañana':'en '+daysLeft+'d')+'</div>';
-      h += '<div class="del-turno" data-tid="'+t.id+'" style="font-size:16px;cursor:pointer;color:var(--text-hint);padding:2px 4px;">×</div>';
-      h += '</div>';
-    });
-  }
-
-  // Pasados colapsados
-  if(pasados.length > 0) {
-    h += '<div style="font-size:10px;color:var(--text-hint);font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin:8px 0 5px;">Anteriores</div>';
-    pasados.slice(0,3).forEach(t => {
-      const d = new Date(t.fecha + 'T12:00');
-      const dStr = d.toLocaleDateString("es-AR", {day:"numeric",month:"short",year:"numeric"});
-      h += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--r-md);background:var(--cream);opacity:.6;margin-bottom:4px;">';
-      h += '<div style="font-size:12px;font-weight:600;color:var(--text-mid);flex:1;">'+t.tipo+'</div>';
-      h += '<div style="font-size:10px;color:var(--text-hint);">'+dStr+'</div>';
-      h += '<div class="del-turno" data-tid="'+t.id+'" style="font-size:14px;cursor:pointer;color:var(--text-hint);padding:2px 4px;">×</div>';
-      h += '</div>';
-    });
-  }
-
-  h += '</div>';
-
-  // Formulario para agregar
-  h += '<div style="border-top:1px solid var(--cream-dark);padding-top:12px;margin-top:6px;">';
-  h += '<div style="font-size:11px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">+ Agregar turno</div>';
-  h += '<div class="al-row"><span class="al-lbl">Tipo de consulta o estudio</span><input type="text" class="al-inp" id="turno-tipo" style="width:100%;font-family:var(--fb);" placeholder="Ej: Ginecólogo, Papanicolau, Ecografía..."></div>';
-  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;">';
-  h += '<div><div class="al-lbl">Fecha</div><input type="date" class="al-inp" id="turno-fecha" style="width:100%;"></div>';
-  h += '<div><div class="al-lbl">Hora</div><input type="time" class="al-inp" id="turno-hora" value="09:00" style="width:100%;"></div>';
-  h += '</div>';
-  h += '<div class="al-row" style="margin-top:6px;"><span class="al-lbl">Notas (opcional)</span><input type="text" class="al-inp" id="turno-notas" style="width:100%;font-family:var(--fb);" placeholder="En ayunas, traer análisis previos..."></div>';
-  h += '<button onclick="addTurno()" style="width:100%;margin-top:10px;padding:11px;border:none;border-radius:var(--r-lg);background:var(--teal);color:white;font-size:13px;font-weight:700;font-family:var(--fb);cursor:pointer;">Agregar turno</button>';
-  h += '</div>';
-
-  return h;
-}
-
-function attachTurnoEvents() {
-  document.querySelectorAll('.del-turno').forEach(el => {
-    el.onclick = () => deleteTurno(el.dataset.tid);
-  });
-}
-
-function addTurno() {
-  const tipo = document.getElementById('turno-tipo')?.value.trim();
-  const fecha = document.getElementById('turno-fecha')?.value;
-  const hora = document.getElementById('turno-hora')?.value;
-  const notas = document.getElementById('turno-notas')?.value.trim();
-  if(!tipo || !fecha) { showToast('Completá tipo y fecha'); return; }
-  const id = 'turno-' + Date.now();
-  turnosMedicos.push({id, tipo, fecha, hora, notas});
-  save();
-  // Programar notificación si hay permiso
-  if(Notification.permission === 'granted' && swReg) {
-    const fechaDate = new Date(fecha + 'T' + (hora||'09:00') + ':00');
-    const un_dia_antes = new Date(fechaDate.getTime() - 86400000);
-    const delay = un_dia_antes - new Date();
-    if(delay > 0) {
-      swReg.active?.postMessage({type:'SCHEDULE_NOTIFICATION', id, title:'🩺 Turno médico mañana', body: tipo + (hora?' a las '+hora:''), delay});
-    }
-    const delayDia = fechaDate - new Date();
-    if(delayDia > 0) {
-      swReg.active?.postMessage({type:'SCHEDULE_NOTIFICATION', id:id+'-dia', title:'🩺 Turno médico hoy', body: tipo + (hora?' a las '+hora:''), delay:delayDia});
-    }
-  }
-  // Re-renderizar
-  const body = document.getElementById('body-medico');
-  if(body && body.classList.contains('open')){body.innerHTML = buildTurnosHTML() + '<button class="save-alarm-btn" id="sab-m">Guardar</button>';const _sb=document.getElementById('sab-m');if(_sb)_sb.onclick=()=>saveAlarmCfg('medico');attachTurnoEvents();}
-  showToast('Turno agregado ✓');
-}
-
-function deleteTurno(id) {
-  turnosMedicos = turnosMedicos.filter(t => t.id !== id);
-  save();
-  const body = document.getElementById('body-medico');
-  if(body){body.innerHTML = buildTurnosHTML() + '<button class="save-alarm-btn" id="sab-m">Guardar</button>';const _sb=document.getElementById('sab-m');if(_sb)_sb.onclick=()=>saveAlarmCfg('medico');attachTurnoEvents();}
-}
-
-// En renderUpcoming incluir turnos médicos próximos
-function getTurnosProximos() {
-  const hoy = new Date(); hoy.setHours(0,0,0,0);
-  return turnosMedicos
-    .filter(t => { const d = new Date(t.fecha+'T12:00'); return d >= hoy; })
-    .sort((a,b) => new Date(a.fecha) - new Date(b.fecha))
-    .slice(0,3);
-}
-// ══ /TURNOS MÉDICOS ══
-
-// ══ ALARMS ══
-function renderAlarmCards() {
-  renderAlarmGroup('safetyAlarms','safety');
-  renderAlarmGroup('cycleAlarms','cycle');
-  renderAlarmGroup('customAlarms','custom');
-  renderUpcoming();
-  attachTurnoEvents();
-}
-function renderAlarmGroup(cid,group) {
-  const c=document.getElementById(cid); if(!c) return; c.innerHTML='';
-  ALARM_DEFS.filter(a=>a.group===group).forEach(a=>{
-    const isMedico = a.id==='medico';
-    const card=document.createElement('div');
-    card.className='alarm-card'+(a.featured?' featured':'');
-
-    const head=document.createElement('div'); head.className='ac-head';
-    head.onclick=()=>toggleAC(a.id);
-    head.innerHTML=
-      '<div class="ac-icon" style="background:'+a.bg+';">'+a.ic+'</div>'+
-      '<div class="ac-info"><div class="ac-name">'+a.name+(a.featured?'<span class="badge-new">★</span>':'')+'</div><div class="ac-sub">'+a.sub+'</div></div>';
-
-    if(isMedico){
-      const badge=document.createElement('span');
-      const nProx=turnosMedicos.filter(t=>new Date(t.fecha+'T12:00')>=new Date()).length;
-      badge.style.cssText='font-size:10px;font-weight:700;color:var(--teal);padding:3px 8px;border-radius:10px;background:#EEF6F5;margin-right:4px;';
-      badge.textContent=nProx>0?nProx+' próx.':'Sin turnos';
-      head.appendChild(badge);
-    } else {
-      const tog=document.createElement('div');
-      tog.className='tog'+(alarmOn[a.id]?' on':'');
-      tog.id='tog-'+a.id;
-      tog.onclick=(function(id){return function(e){e.stopPropagation();toggleAlarmState(id);};})(a.id);
-      head.appendChild(tog);
-    }
-    const chev=document.createElement('svg'); chev.setAttribute('width','16'); chev.setAttribute('height','16');
-    chev.setAttribute('viewBox','0 0 16 16'); chev.setAttribute('fill','none');
-    chev.className='chev'; chev.id='chev-'+a.id; chev.style.marginLeft='6px';
-    chev.innerHTML='<path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>';
-    head.appendChild(chev);
-    card.appendChild(head);
-
-    const body=document.createElement('div'); body.className='ac-body'; body.id='body-'+a.id;
-    body.innerHTML=alarmBody(a);
-    if(!isMedico){
-      const btn=document.createElement('button'); btn.className='save-alarm-btn';
-      btn.textContent='Guardar'; btn.onclick=(function(id){return function(){saveAlarmCfg(id);};})(a.id);
-      body.appendChild(btn);
-    }
-    card.appendChild(body);
-    c.appendChild(card);
-  });
-}
-function alarmBody(a) {
-  if(a.id==='copa') return '<div class="al-row"><span class="al-lbl">Recordar hasta el día</span><div style="display:flex;align-items:center;gap:5px;"><input type="number" class="al-inp" value="5" min="1" max="10" style="width:60px;"> <span style="font-size:11px;color:var(--text-hint);">del ciclo</span></div></div><div class="al-row"><span class="al-lbl">Repetir cada</span><div style="display:flex;align-items:center;gap:5px;"><input type="number" class="al-inp" value="12" min="1" max="24" style="width:60px;"><span style="font-size:11px;color:var(--text-hint);">horas</span></div></div><div class="al-row"><span class="al-lbl">Primer aviso</span><input type="time" class="al-inp" value="08:00"></div>';
-  if(a.id==='premens') return '<div class="al-row"><span class="al-lbl">Avisar con</span><div style="display:flex;align-items:center;gap:5px;"><input type="number" class="al-inp" value="3" min="1" max="7" style="width:60px;"><span style="font-size:11px;color:var(--text-hint);">días antes</span></div></div><div class="al-row"><span class="al-lbl">Hora</span><input type="time" class="al-inp" value="09:00"></div>';
-  if(a.id==='record') return '<div class="al-row"><span class="al-lbl">Hora</span><input type="time" class="al-inp" value="20:00"></div><div class="al-row"><span class="al-lbl">Frecuencia</span><select class="al-inp"><option>Cada día</option><option>Cada 2 días</option></select></div>';
-  if(a.id==='agua') return '<div class="al-row"><span class="al-lbl">Cada</span><div style="display:flex;align-items:center;gap:5px;"><input type="number" class="al-inp" value="2" min="1" max="6" style="width:60px;"><span style="font-size:11px;color:var(--text-hint);">horas</span></div></div><div class="al-row"><span class="al-lbl">Entre las</span><div style="display:flex;align-items:center;gap:5px;"><input type="time" class="al-inp" value="08:00"><span style="font-size:11px;color:var(--text-hint);">y las</span><input type="time" class="al-inp" value="22:00"></div></div>';
-  if(a.id==='medico') return buildTurnosHTML();
-  return '<div class="al-row"><span class="al-lbl">Hora</span><input type="time" class="al-inp" value="08:00"></div>';
-}
-function toggleAC(id) {
-  const body=document.getElementById('body-'+id),chev=document.getElementById('chev-'+id);
-  const open=body.classList.contains('open');
-  document.querySelectorAll('.ac-body').forEach(b=>b.classList.remove('open'));
-  document.querySelectorAll('.chev').forEach(c=>c.classList.remove('open'));
-  if(!open){body.classList.add('open');chev.classList.add('open');if(id==='medico')attachTurnoEvents();}
-}
-function toggleAlarmState(id){alarmOn[id]=!alarmOn[id];document.getElementById('tog-'+id).className='tog'+(alarmOn[id]?' on':'');save();drawWheel();renderAlerts();renderUpcoming();}
-function saveAlarmCfg(id){
-  save();
+  alarmOn[id]=true; document.getElementById('tog-'+id).className='tog on'; save();
   const btn=document.querySelector('#body-'+id+' .save-alarm-btn');
   if(btn){btn.textContent='Guardado';btn.style.background='var(--teal-dark)';setTimeout(()=>{btn.textContent='Guardar';btn.style.background='var(--teal)';},1300);}
 }
@@ -4776,10 +4362,6 @@ function launchApp() {
   }
 }
 
-function closeAyuda(e) {
-  if(e.target === document.getElementById('ayudaModal'))
-    document.getElementById('ayudaModal').style.display = 'none';
-}
 function startNewCycle() {
   document.getElementById('newCycleModal').style.display = 'flex';
 }
@@ -5000,6 +4582,7 @@ function welcomeFinish() {
   }, 2000);
 }
 function closeAyuda(e) {
+  if(e.target === document.getElementById('ayudaModal')) document.getElementById('ayudaModal').style.display = 'none';
   if(e.target === document.getElementById('welcomeModal')) welcomeFinish();
 }
 function acceptDisclaimer(){localStorage.setItem('jn_disclaimer_v4','1');document.getElementById('disclaimerModal').style.display='none';setTimeout(()=>{if(!localStorage.getItem('jn_loggedin')&&Object.keys(dayData).length>=3)document.getElementById('cloudBanner').style.display='block';},2000);}
@@ -5007,6 +4590,20 @@ function showLoginModal(){document.getElementById('cloudBanner').style.display='
 function loginGoogle(){document.getElementById('loginModal').style.display='none';localStorage.setItem('jn_loggedin','google');showToast('¡Cuenta conectada! Tus datos se sincronizarán.');}
 function loginEmail(){const email=prompt('Ingresá tu email:');if(!email)return;document.getElementById('loginModal').style.display='none';localStorage.setItem('jn_loggedin','email:'+email);showToast('¡Listo! Te enviamos un link a '+email);}
 function showToast(msg){const t=document.createElement('div');t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--teal-deep);color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:200;white-space:nowrap;';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3000);}
+
+function maybShowCafecitoModal() {
+  const DAYS_BETWEEN = 60;
+  const key = 'jn_last_cafecito';
+  const last = localStorage.getItem(key);
+  const now = Date.now();
+  if(last && (now - parseInt(last)) < DAYS_BETWEEN * 86400000) return;
+  // Solo mostrar si hay al menos 5 días registrados (usuaria activa)
+  if(Object.keys(dayData).length < 5) return;
+  localStorage.setItem(key, now.toString());
+  setTimeout(() => {
+    document.getElementById('cafecitoModal').style.display = 'flex';
+  }, 1800);
+}
 
 
 // ══ TAGS / KEYWORDS ══
@@ -5806,6 +5403,22 @@ initNotifications();
     </div>
     <button class="btn-primary" onclick="confirmNewCycle()">🌸 Sí, empezó hoy</button>
     <button class="btn-ghost" style="margin-top:8px;" onclick="document.getElementById('newCycleModal').style.display='none'">Todavía no</button>
+  </div>
+</div>
+
+<!-- ── CAFECITO MODAL ── -->
+<div class="modal-overlay" id="cafecitoModal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal-box" style="text-align:center;">
+    <div class="modal-handle"></div>
+    <div style="font-size:40px;margin-bottom:8px;">☕</div>
+    <div class="modal-title" style="font-size:17px;">¿Te está siendo útil Cíclica?</div>
+    <div class="modal-text" style="font-size:12px;color:var(--text-mid);line-height:1.6;margin-bottom:16px;">
+      La app es y siempre será gratuita. Si querés apoyarnos para seguir mejorándola, podés invitarnos un cafecito 💚
+    </div>
+    <a href="https://cafecito.app/jarananatural" target="_blank" rel="noopener"
+      onclick="document.getElementById('cafecitoModal').style.display='none'"
+      style="display:block;padding:12px;border-radius:var(--r-lg);background:#FFD166;color:#5A3700;font-size:13px;font-weight:700;font-family:var(--fb);text-decoration:none;margin-bottom:8px;">☕ Sí, invitarles un cafecito</a>
+    <button class="btn-ghost" onclick="document.getElementById('cafecitoModal').style.display='none'">Ahora no</button>
   </div>
 </div>
 <!-- ── GLOSARIO ── -->
