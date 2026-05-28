@@ -4679,10 +4679,20 @@ function recalcCurDay() {
   today.setHours(12,0,0,0);
   const diff = Math.floor((today - cycle1Date) / 86400000);
   if(diff >= 0) {
-    // Día dentro del ciclo actual (1 a TOTAL)
+    const cyclesElapsed = Math.floor(diff / TOTAL);
     const dayInCycle = (diff % TOTAL) + 1;
-    // Si pasó más de un ciclo sin que la usuaria haya marcado nuevo ciclo,
-    // actualizamos curDay pero no cambiamos el ciclo
+    // Si pasaron uno o más ciclos completos, actualizamos cycle1Date al inicio del ciclo actual
+    if(cyclesElapsed > 0) {
+      const newCycle1 = new Date(cycle1Date.getTime() + cyclesElapsed * TOTAL * 86400000);
+      newCycle1.setHours(12,0,0,0);
+      if(typeof cycleHistory !== 'undefined') {
+        cycleHistory.push({id: currentCycleId||0, name:'Ciclo '+(cycleHistory.length+1), startDate:cycle1Date.toISOString(), totalDays:TOTAL, data:{...dayData}});
+        currentCycleId = (currentCycleId||0) + cyclesElapsed;
+      }
+      cycle1Date = newCycle1;
+      dayData = {};
+      save();
+    }
     curDay = Math.min(dayInCycle, TOTAL);
   }
 }
