@@ -1778,16 +1778,32 @@ function isIosSafari() {
 
 function signInWithGoogle() {
   const btn = document.getElementById('googleLoginBtn');
+  if(btn) { btn.textContent = 'Conectando...'; btn.disabled = true; }
+  // Crear provider ANTES de cualquier async para mantener el gesto del usuario (necesario en iOS Safari)
+  const provider = new firebase.auth.GoogleAuthProvider();
   if(!fbAuth) {
-    // Firebase no cargó todavía — reintentar en 800ms
-    if(btn) btn.textContent = 'Cargando...';
-    setTimeout(signInWithGoogle, 800);
+    // Firebase todavía no cargó — esperar y reintentar mostrando estado
+    if(btn) btn.textContent = 'Cargando Firebase...';
+    var attempts = 0;
+    var interval = setInterval(function() {
+      attempts++;
+      if(fbAuth) {
+        clearInterval(interval);
+        if(btn) { btn.textContent = 'Conectando...'; btn.disabled = true; }
+        _doSignInPopup(provider, btn);
+      } else if(attempts > 10) {
+        clearInterval(interval);
+        showToast('Error al cargar. Recargá la página.');
+        if(btn) { btn.disabled = false; btn.textContent = 'Continuar con Google'; }
+      }
+    }, 500);
     return;
   }
-  if(btn) { btn.textContent = 'Conectando...'; btn.disabled = true; }
-  const provider = new firebase.auth.GoogleAuthProvider();
 
-  // Usar popup en todos los dispositivos (signInWithRedirect falla en iOS Safari por restricciones de cookies de terceros)
+  _doSignInPopup(provider, btn);
+}
+
+function _doSignInPopup(provider, btn) {
   fbAuth.signInWithPopup(provider).then(function(result) {
       fbUser = result.user;
       localStorage.setItem('jn_loggedin', '1');
