@@ -1779,7 +1779,6 @@ function isIosSafari() {
 
 function signInWithGoogle() {
   const btn = document.getElementById('googleLoginBtn');
-  // Crear provider antes de cualquier async para conservar el gesto del usuario en iOS
   const provider = (typeof firebase !== 'undefined') ? new firebase.auth.GoogleAuthProvider() : null;
 
   if(!fbAuth || !provider) {
@@ -1789,7 +1788,7 @@ function signInWithGoogle() {
       attempts++;
       if(typeof firebase !== 'undefined' && fbAuth) {
         clearInterval(wait);
-        _doSignInPopup(new firebase.auth.GoogleAuthProvider(), btn);
+        _doSignIn(new firebase.auth.GoogleAuthProvider(), btn);
       } else if(attempts > 10) {
         clearInterval(wait);
         showToast('Error al cargar. Recargá la página.');
@@ -1799,6 +1798,16 @@ function signInWithGoogle() {
     return;
   }
 
+  _doSignIn(provider, btn);
+}
+
+function _doSignIn(provider, btn) {
+  if(btn) { btn.textContent = 'Conectando...'; btn.disabled = true; }
+  if(isIosSafari()) {
+    localStorage.setItem('jn_pending_login', '1');
+    fbAuth.signInWithRedirect(provider);
+    return;
+  }
   _doSignInPopup(provider, btn);
 }
 
