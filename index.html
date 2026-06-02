@@ -1743,15 +1743,17 @@ function initFirebase() {
     fbDb = firebase.firestore();
 
     // Manejar resultado de redirect (iOS Safari)
+    let firestoreLoaded = false;
+
     fbAuth.getRedirectResult().then(function(result) {
       if(result && result.user) {
         fbUser = result.user;
         localStorage.setItem('jn_loggedin', '1');
         localStorage.removeItem('jn_pending_login');
         document.getElementById('loginModal').style.display = 'none';
+        firestoreLoaded = true;
         loadFromFirestore(fbUser.uid);
         renderUserBadge(fbUser);
-        showToast('¡Bienvenida, ' + (fbUser.displayName||'').split(' ')[0] + '! 🌸');
       }
     }).catch(function(err) {
       if(err.code !== 'auth/no-auth-event') console.warn('Redirect error:', err);
@@ -1761,10 +1763,13 @@ function initFirebase() {
       fbUser = user;
       if(user) {
         localStorage.setItem('jn_loggedin', '1');
-        if(document.getElementById('loginModal'))
-          document.getElementById('loginModal').style.display = 'none';
-        loadFromFirestore(user.uid);
-        renderUserBadge(user);
+        const modal = document.getElementById('loginModal');
+        if(modal) modal.style.display = 'none';
+        if(!firestoreLoaded) {
+          firestoreLoaded = true;
+          loadFromFirestore(user.uid);
+          renderUserBadge(user);
+        }
       }
     });
   } catch(e) {
@@ -1802,12 +1807,6 @@ function signInWithGoogle() {
 }
 
 function _doSignIn(provider, btn) {
-  if(btn) { btn.textContent = 'Conectando...'; btn.disabled = true; }
-  if(isIosSafari()) {
-    localStorage.setItem('jn_pending_login', '1');
-    fbAuth.signInWithRedirect(provider);
-    return;
-  }
   _doSignInPopup(provider, btn);
 }
 
@@ -1878,12 +1877,15 @@ function loadFromFirestore(uid) {
       if(data.alarmOn) alarmOn = {...alarmOn, ...data.alarmOn};
       if(typeof TOTAL !== 'undefined' && profile.cycleLen) TOTAL = profile.cycleLen;
       recalcCurDay();
-      // Si el onboarding sigue visible (localStorage fue borrado pero hay datos en Firestore), lanzar la app
-      if(profile.name && document.getElementById('screen-onboarding').classList.contains('active')) {
-        localStorage.setItem('jn_disclaimer_v4','1'); // no mostrar disclaimer a usuaria existente
-        localStorage.setItem('jn_tour_done','1');     // no mostrar tour a usuaria existente
-        setTimeout(launchApp, 100);
-        return;
+      // Si hay datos en Firestore y la app no está activa, lanzar directo
+      if(profile.name) {
+        localStorage.setItem('jn_disclaimer_v4','1');
+        localStorage.setItem('jn_tour_done','1');
+        const appScreen = document.getElementById('screen-app');
+        if(!appScreen || !appScreen.classList.contains('active')) {
+          setTimeout(launchApp, 150);
+          return;
+        }
       }
       renderProfile();
       drawWheel(); renderPhaseRow(); renderDayCard(); renderAlerts(); renderCalendar(); renderPatterns(); updatePhaseBanner(); renderLuna();
