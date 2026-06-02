@@ -1872,6 +1872,11 @@ function loadFromFirestore(uid) {
       if(data.alarmOn) alarmOn = {...alarmOn, ...data.alarmOn};
       if(typeof TOTAL !== 'undefined' && profile.cycleLen) TOTAL = profile.cycleLen;
       recalcCurDay();
+      // Si el onboarding sigue visible (localStorage fue borrado pero hay datos en Firestore), lanzar la app
+      if(profile.name && document.getElementById('screen-onboarding').classList.contains('active')) {
+        launchApp();
+        return;
+      }
       renderProfile();
       drawWheel(); renderPhaseRow(); renderDayCard(); renderAlerts(); renderCalendar(); renderPatterns(); updatePhaseBanner(); renderLuna();
       showToast('Datos sincronizados ✓');
