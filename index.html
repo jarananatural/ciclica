@@ -1408,7 +1408,6 @@ function drawWheel() {
     const sa=((d-1)/TOTAL)*2*Math.PI-Math.PI/2+gap;
     const ea=(d/TOTAL)*2*Math.PI-Math.PI/2-gap;
     const ph=getPhase(d), isSel=d===curDay, hasData=!!dayData[d];
-    const fw=getFertWindow(); const isFert=alarmOn.fertil&&d>=fw.start&&d<=fw.end, isPre=alarmOn.premens&&d>=TOTAL-3;
     ctx.beginPath();
     ctx.moveTo(cx+iR*Math.cos(sa),cy+iR*Math.sin(sa));
     ctx.arc(cx,cy,oR,sa,ea); ctx.arc(cx,cy,iR,ea,sa,true); ctx.closePath();
@@ -1422,8 +1421,6 @@ function drawWheel() {
       ctx.fillStyle = isSel ? ph.color : hasData ? ph.light : ph.light+'55';
     }
     ctx.fill();
-    if(isFert&&!isSel){ctx.strokeStyle='#5F9595';ctx.lineWidth=2.5;ctx.stroke();}
-    if(isPre &&!isSel){ctx.strokeStyle='#FFB7A1';ctx.lineWidth=2;  ctx.stroke();}
     const ma=((d-.5)/TOTAL)*2*Math.PI-Math.PI/2;
     const lr=(oR+iR)/2;
     ctx.save(); ctx.translate(cx+lr*Math.cos(ma),cy+lr*Math.sin(ma)); ctx.rotate(ma+Math.PI/2);
@@ -1768,6 +1765,9 @@ function initFirebase() {
           document.getElementById('loginModal').style.display = 'none';
         loadFromFirestore(user.uid);
         renderUserBadge(user);
+        if(!localStorage.getItem('jn_launched') && profile.name) {
+          launchApp();
+        }
       }
     });
   } catch(e) {
@@ -2332,7 +2332,7 @@ function renderLuna() {
 // SECCIONES DINÁMICAS DEL REGISTRO DIARIO
 // ══════════════════════════════════════
 const SEC_COLOR = {
-  sint_menstrual:   {c:'#F07060', l:'#FFF0ED', name:'🌊 Ciclo menstrual'},
+  sint_menstrual:   {c:'#F07060', l:'#FFF0ED', name:'🩸 Sangrado menstrual'},
   sint_fisica:      {c:'#5F9595', l:'#EEF6F5', name:'🫧 Síntomas físicos'},
   sint_energia:     {c:'#F0BC66', l:'#FFF8EE', name:'⚡ Energía y sueño'},
   sint_emocional:   {c:'#9F77DD', l:'#F5EEFA', name:'😊 Emociones'},
@@ -2342,7 +2342,7 @@ const SEC_COLOR = {
   sint_alimentacion:{c:'#D4904A', l:'#FFF3E8', name:'🥗 Alimentación'},
 };
 
-const SINT_FISICOS = ['🤕 Dolor de cabeza','😤 Acné','💫 Mareo','🌸 Sensibilidad en mamas','🔙 Dolor lumbar','💪 Dolor muscular','🔴 Sarpullido','😣 Estreñimiento','🌊 Diarrea','😴 Fatiga','😤 Estrés','🍫 Antojos','😖 Cólicos','⚡ Calambres','🌙 Insomnio','🎈 Hinchazón','🤢 Náuseas','🤸 Torpeza'];
+const SINT_FISICOS = ['🤕 Dolor de cabeza','😤 Acné','💫 Mareo','🌸 Sensibilidad en mamas','🔙 Dolor lumbar','💪 Dolor muscular','🔴 Sarpullido','😣 Estreñimiento','🌊 Diarrea','😴 Fatiga','😤 Estrés','🍫 Antojos','😖 Cólicos','⚡ Calambres','🌙 Insomnio','🎈 Hinchazón','🤢 Náuseas','🤸 Torpeza','💧 Flujo vaginal'];
 const EMOCIONES    = ['😊 Alegría','😨 Miedo','😤 Furia','😢 Tristeza','💪 Confianza','😰 Ansiedad','🌟 Optimismo','🕊️ Serenidad','🌧️ Melancolía','💭 Distracción','😠 Irritación','👎 Desaprobación','🖤 Duelo','🤍 Aceptación','🌀 Desconcentración','🎢 Cambios de humor','⚡ Con energía','🌿 Calma','🌸 Con ganas de socializar','🌱 Prefiero pocas personas','🐚 Necesidad de soledad'];
 const SINT_ALIM    = ['🍽️ Más apetito','🚫 Menos apetito','🍬 Antojos dulces','🧂 Antojos salados','✅ Buena digestión','😣 Digestión pesada','🤢 Náuseas','💧 Mucha sed'];
 const MOCO_OPTS    = ['Sin moco','Cremoso','Acuoso','Elástico (tipo clara)','Seco'];
@@ -2430,6 +2430,10 @@ function buildSecHTML(id, col, active) {
     </div>
     <div class="e-lbl">Moco cervical</div><div class="chip-row" id="chips-moco"></div>
     <div class="e-lbl">Test de ovulación</div><div class="chip-row" id="chips-testovu"></div>
+    <div class="e-lbl">🫀 Cuello uterino</div>
+    <div class="e-lbl" style="font-size:12px;color:#5F9595;margin:-4px 0 2px">Posición</div><div class="chip-row" id="chips-cerv_pos"></div>
+    <div class="e-lbl" style="font-size:12px;color:#5F9595;margin:-4px 0 2px">Consistencia</div><div class="chip-row" id="chips-cerv_cons"></div>
+    <div class="e-lbl" style="font-size:12px;color:#5F9595;margin:-4px 0 2px">Apertura</div><div class="chip-row" id="chips-cerv_aper"></div>
     <div class="e-lbl">Notas</div><textarea class="note-field" id="nota-sint_fertilidad" rows="2" placeholder="Otros signos..."></textarea>`;
 
   } else if(id === 'sint_alimentacion') {
@@ -2548,6 +2552,9 @@ function renderSecInternals(id) {
     const f = day.sint_fertilidad || {};
     if(document.getElementById('input-temp')) document.getElementById('input-temp').value = f.temp||'';
     if(document.getElementById('nota-sint_fertilidad')) document.getElementById('nota-sint_fertilidad').value = f.notas||'';
+    if(document.getElementById('chips-cerv_pos')) buildChipsFor('chips-cerv_pos', CUELLO_POS, new Set(f.cerv_pos?[f.cerv_pos]:[])); 
+    if(document.getElementById('chips-cerv_cons')) buildChipsFor('chips-cerv_cons', CUELLO_CONS, new Set(f.cerv_cons?[f.cerv_cons]:[])); 
+    if(document.getElementById('chips-cerv_aper')) buildChipsFor('chips-cerv_aper', CUELLO_APER, new Set(f.cerv_aper?[f.cerv_aper]:[])); 
     buildChipsFor('chips-moco', MOCO_OPTS, new Set(f.moco ? [f.moco] : []), true);
     buildChipsFor('chips-testovu', TEST_OVU, new Set(f.test_ovu ? [f.test_ovu] : []), true);
   } else if(id === 'sint_alimentacion') {
@@ -2654,7 +2661,10 @@ function saveSeccion(id) {
       temp: parseFloat(document.getElementById('input-temp')?.value)||0,
       moco: document.querySelector('#chips-moco .chip.sex-on')?.textContent||'',
       test_ovu: document.querySelector('#chips-testovu .chip.sex-on')?.textContent||'',
-      notas: document.getElementById('nota-sint_fertilidad')?.value||''};
+      notas: document.getElementById('nota-sint_fertilidad')?.value||'',
+      cerv_pos: document.querySelector('#chips-cerv_pos .chip.sel')?.dataset.val||null,
+      cerv_cons: document.querySelector('#chips-cerv_cons .chip.sel')?.dataset.val||null,
+      cerv_aper: document.querySelector('#chips-cerv_aper .chip.sel')?.dataset.val||null};
   } else if(id === 'sint_alimentacion') {
     const chips = [...document.querySelectorAll('#chips-sint_alimentacion .chip.sex-on')].map(c=>c.textContent);
     day.sint_alimentacion = {activo:true, chips,
@@ -2723,7 +2733,10 @@ let entrenoActivo=false, intensidadSel=0, objetivoSel=null;
 let destrezaVals={Coordinación:0,Resistencia:0,Fuerza:0,Flexibilidad:0};
 
 // ══ DESEO Y SEXUALIDAD ══
-const METODOS_ANTICONCEP=['Pastillas','DIU hormonal','DIU de cobre','Implante','Inyectable','Parche','Anillo vaginal','Ligadura de trompas','Método sintotérmico','MELA','Ninguno','Otro'];
+const CUELLO_POS=['Alto','Medio','Bajo'];
+const CUELLO_CONS=['Blando','Medio','Firme'];
+const CUELLO_APER=['Abierto','Entreabierto','Cerrado'];
+const METODOS_ANTICONCEP=['Pastillas','DIU hormonal','DIU de cobre','Implante','Inyectable','Parche','Anillo vaginal','Preservativo','Ligadura de trompas','Método sintotérmico','MELA','Ninguno','Otro'];
 const METODOS_ETS=['Preservativo externo','Preservativo interno','Otro'];
 const CON_QUIEN=['Autoerotismo','Pareja estable','Otra persona','Prefiero no decir'];
 const COMO_SENTIDA=['Conexión','Presencia','Deseo','Bien','Desconexión','Incomodidad','Ansiedad','Libertad'];
@@ -4009,7 +4022,7 @@ function renderObStepInto(id){ obRender(); }
 
 
 const SECCIONES_DEF = [
-  {id:'sint_menstrual',   label:'Ciclo menstrual',    desc:'Sangrado, color, duración',        ic:'🌊'},
+  {id:'sint_menstrual',   label:'Sangrado menstrual',  desc:'Sangrado, color, duración',        ic:'🩸'},
   {id:'sint_fisica',      label:'Síntomas físicos',   desc:'Dolor, hinchazón, acné, náuseas',  ic:'🫧'},
   {id:'sint_energia',     label:'Energía y sueño',    desc:'Nivel de energía, horas de sueño', ic:'⚡'},
   {id:'sint_emocional',   label:'Emociones',          desc:'Humor, ansiedad, motivación',      ic:'😊'},
@@ -4211,8 +4224,14 @@ function recalcCurDay() {
     curDay = Math.min(dayInCycle, TOTAL);
   }
 }
+
+function esMenopausia() {
+  return profile.etapaVital === 'Menopausia / Post-menopausia' || (profile.condicionesSalud||[]).includes('Menopausia');
+}
 function launchApp() {
+  if(!localStorage.getItem('jn_since')) localStorage.setItem('jn_since', new Date().toISOString());
   localStorage.setItem('jn_launched', '1');
+  checkTour();
   setTimeout(launchConfetti, 100);
   document.getElementById('screen-onboarding').classList.remove('active');
   document.getElementById('screen-app').classList.add('active');
@@ -4883,7 +4902,6 @@ setMaxDateInputs();
 applyTabStyle(localStorage.getItem('jn_tab_style')||'b');
 initFirebase();
 checkLogin();
-checkTour();
 if(localStorage.getItem('jn_launched') || profile.name) {
   launchApp();
 } else {
