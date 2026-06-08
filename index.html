@@ -1814,11 +1814,7 @@ function _doSignInPopup(provider, btn) {
   if(btn) { btn.textContent = 'Conectando...'; btn.disabled = true; }
   fbAuth.signInWithPopup(provider).then(function(result) {
     fbUser = result.user;
-    localStorage.setItem('jn_loggedin', '1');
-    document.getElementById('loginModal').style.display = 'none';
-    loadFromFirestore(fbUser.uid);
-    renderUserBadge(fbUser);
-    showToast('¡Bienvenida, ' + (fbUser.displayName||'').split(' ')[0] + '! 🌸');
+    // onAuthStateChanged se encarga de loadFromFirestore
   }).catch(function(err) {
     console.error(err);
     showToast('No se pudo conectar con Google');
@@ -4251,10 +4247,9 @@ function esMenopausia() {
 function launchApp() {
   if(!localStorage.getItem('jn_since')) localStorage.setItem('jn_since', new Date().toISOString());
   localStorage.setItem('jn_launched', '1');
-  checkTour();
-  setTimeout(launchConfetti, 100);
   document.getElementById('screen-onboarding').classList.remove('active');
   document.getElementById('screen-app').classList.add('active');
+  setTimeout(launchConfetti, 100);
   if(profile.cycleLen) TOTAL=profile.cycleLen;
   document.getElementById('greeting').textContent=profile.name?'¡Hola, '+profile.name.split(' ')[0]+'!':'¡Hola!';
   recalcCurDay();
@@ -4264,10 +4259,7 @@ function launchApp() {
   const iw = document.getElementById('irregularWarning');
   if(iw && profile.regularidad === 'Irregular') iw.style.display = 'block';
   if(cycleHistory.length>0) document.getElementById('cycleNameLabel').textContent='Ciclo '+currentCycleId;
-  // Show disclaimer
-  if(!localStorage.getItem('jn_disclaimer_v4')) {
-    setTimeout(()=>{ document.getElementById('disclaimerModal').style.display='flex'; }, 800);
-  }
+  setTimeout(checkTour, 1800);
 }
 
 function closeAyuda(e) {
