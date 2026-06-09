@@ -1761,14 +1761,18 @@ function initFirebase() {
 
     fbAuth.onAuthStateChanged(function(user) {
       fbUser = user;
+      console.log('[AUTH] onAuthStateChanged user:', user ? user.email : 'null');
       if(user) {
         localStorage.setItem('jn_loggedin', '1');
         const modal = document.getElementById('loginModal');
         if(modal) modal.style.display = 'none';
         if(!firestoreLoaded) {
           firestoreLoaded = true;
+          console.log('[AUTH] llamando loadFromFirestore');
           loadFromFirestore(user.uid);
           renderUserBadge(user);
+        } else {
+          console.log('[AUTH] firestoreLoaded ya era true, saltando');
         }
       }
     });
@@ -1874,14 +1878,20 @@ function loadFromFirestore(uid) {
       if(typeof TOTAL !== 'undefined' && profile.cycleLen) TOTAL = profile.cycleLen;
       recalcCurDay();
       // Si hay datos en Firestore y la app no está activa, lanzar directo
+      console.log('[FIRESTORE] profile.name:', profile.name, '| screen-app active:', document.getElementById('screen-app').classList.contains('active'));
       if(profile.name) {
         localStorage.setItem('jn_disclaimer_v4','1');
         localStorage.setItem('jn_tour_done','1');
         const appScreen = document.getElementById('screen-app');
         if(!appScreen || !appScreen.classList.contains('active')) {
+          console.log('[FIRESTORE] llamando launchApp');
           setTimeout(launchApp, 150);
           return;
+        } else {
+          console.log('[FIRESTORE] screen-app ya activa, no llama launchApp');
         }
+      } else {
+        console.log('[FIRESTORE] profile.name vacío, no lanza app');
       }
       renderProfile();
       drawWheel(); renderPhaseRow(); renderDayCard(); renderAlerts(); renderCalendar(); renderPatterns(); updatePhaseBanner(); renderLuna();
@@ -4245,6 +4255,7 @@ function esMenopausia() {
   return profile.etapaVital === 'Menopausia / Post-menopausia' || (profile.condicionesSalud||[]).includes('Menopausia');
 }
 function launchApp() {
+  console.log('[LAUNCH] launchApp ejecutado');
   if(!localStorage.getItem('jn_since')) localStorage.setItem('jn_since', new Date().toISOString());
   localStorage.setItem('jn_launched', '1');
   document.getElementById('screen-onboarding').classList.remove('active');
