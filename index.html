@@ -1866,8 +1866,12 @@ function saveToFirestore() {
 }
 
 function loadFromFirestore(uid) {
-  showToast('[2b] fbDb: ' + (fbDb ? 'ok' : 'NULL'));
-  if(!fbDb) { showToast('[2c] fbDb null, saliendo'); return; }
+  if(!fbDb) {
+    showToast('[2b] fbDb null, reintentando...');
+    setTimeout(function() { loadFromFirestore(uid); }, 500);
+    return;
+  }
+  showToast('[2b] fbDb ok');
   fbDb.collection('users').doc(uid).get().then(function(doc) {
     showToast('[2d] doc recibido, exists: ' + doc.exists);
     if(doc.exists) {
