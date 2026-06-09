@@ -1866,8 +1866,10 @@ function saveToFirestore() {
 }
 
 function loadFromFirestore(uid) {
-  if(!fbDb) return;
+  showToast('[2b] fbDb: ' + (fbDb ? 'ok' : 'NULL'));
+  if(!fbDb) { showToast('[2c] fbDb null, saliendo'); return; }
   fbDb.collection('users').doc(uid).get().then(function(doc) {
+    showToast('[2d] doc recibido, exists: ' + doc.exists);
     if(doc.exists) {
       const data = doc.data();
       if(data.profile) profile = data.profile;
@@ -1897,7 +1899,7 @@ function loadFromFirestore(uid) {
       drawWheel(); renderPhaseRow(); renderDayCard(); renderAlerts(); renderCalendar(); renderPatterns(); updatePhaseBanner(); renderLuna();
       showToast('Datos sincronizados ✓');
     }
-  }).catch(function(e) { console.warn('Load error:', e); });
+  }).catch(function(e) { showToast('[ERROR] ' + e.message); });
 }
 
 function showSyncBanner() {
