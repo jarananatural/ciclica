@@ -1316,6 +1316,7 @@ function save() {
     localStorage.setItem('jn_cycleid', currentCycleId);
     localStorage.setItem('jn_total', TOTAL);
   } catch(e){}
+  saveToFirestore();
 }
 function load() {
   try {
