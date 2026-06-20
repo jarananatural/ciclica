@@ -3688,6 +3688,89 @@ function renderCycleHistoryList() {
   }).join('');
 }
 
+function openHistorial() {
+  document.getElementById('histOverlay').classList.add('open');
+  renderHistCycleList();
+  document.getElementById('histDetail').style.display = 'none';
+  document.getElementById('histCycleList').style.display = 'block';
+}
+
+function closeHistorial() {
+  document.getElementById('histOverlay').classList.remove('open');
+}
+
+function closeHistorialIfBg(e) {
+  if(e.target.id === 'histOverlay') closeHistorial();
+}
+
+function renderHistCycleList() {
+  const list = document.getElementById('histCycleList');
+  if(!list) return;
+  if(cycleHistory.length === 0) {
+    list.innerHTML = '<p style="font-size:13px;color:var(--text-hint);padding:16px 0;">Todavía no hay ciclos anteriores guardados.</p>';
+    return;
+  }
+  list.innerHTML = cycleHistory.map((c, idx) => {
+    const d = new Date(c.startDate);
+    const dr = Object.keys(c.data || {}).length;
+    return '<div onclick="openHistDetail('+idx+')" style="display:flex;align-items:center;justify-content:space-between;padding:14px;border-bottom:1px solid var(--cream-dark);cursor:pointer;">'+
+      '<div><div style="font-size:14px;font-weight:700;">'+c.name+'</div>'+
+      '<div style="font-size:12px;color:var(--text-hint);">Inicio: '+d.toLocaleDateString('es-AR')+' · '+dr+' días registrados</div></div>'+
+      '<span style="font-size:13px;color:var(--text-hint);">›</span></div>';
+  }).join('');
+}
+
+let _histCurrentCycle = null;
+
+function openHistDetail(idx) {
+  const c = cycleHistory[idx];
+  if(!c) return;
+  _histCurrentCycle = c;
+  document.getElementById('histCycleList').style.display = 'none';
+  document.getElementById('histDetail').style.display = 'block';
+  document.getElementById('hdCycleTitle').textContent = c.name;
+  const d = new Date(c.startDate);
+  const dr = Object.keys(c.data || {}).length;
+  document.getElementById('hdCycleSub').textContent = 'Inicio: ' + d.toLocaleDateString('es-AR') + ' · ' + c.totalDays + ' días de ciclo · ' + dr + ' días registrados';
+  renderHistCal(c);
+  document.getElementById('hdDayDetail').innerHTML = '<div class="hdd-empty">Tocá un día para ver el detalle</div>';
+}
+
+function backToHistList() {
+  document.getElementById('histDetail').style.display = 'none';
+  document.getElementById('histCycleList').style.display = 'block';
+}
+
+function renderHistCal(c) {
+  const cal = document.getElementById('hdCal');
+  if(!cal) return;
+  let html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;">';
+  for(let day = 1; day <= c.totalDays; day++) {
+    const hasData = c.data && c.data[day];
+    html += '<div onclick="showHistDayDetail('+day+')" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:12px;cursor:pointer;background:'+(hasData ? 'var(--teal)' : 'var(--cream-dark)')+';color:'+(hasData ? '#fff' : 'var(--text-hint)')+';">'+day+'</div>';
+  }
+  html += '</div>';
+  cal.innerHTML = html;
+}
+
+function showHistDayDetail(day) {
+  const c = _histCurrentCycle;
+  if(!c) return;
+  const data = c.data && c.data[day];
+  const box = document.getElementById('hdDayDetail');
+  if(!data) {
+    box.innerHTML = '<div class="hdd-empty">Día '+day+' — sin registro</div>';
+    return;
+  }
+  let html = '<div style="font-size:14px;font-weight:700;margin-bottom:8px;">Día '+day+'</div>';
+  if(data.flow) html += '<div style="font-size:13px;margin-bottom:4px;">🌊 Flujo: '+data.flow+'</div>';
+  if(data.symptoms && data.symptoms.length) html += '<div style="font-size:13px;margin-bottom:4px;">🫧 Síntomas: '+data.symptoms.join(', ')+'</div>';
+  if(data.emotions && data.emotions.length) html += '<div style="font-size:13px;margin-bottom:4px;">😊 Emociones: '+data.emotions.join(', ')+'</div>';
+  if(data.energy) html += '<div style="font-size:13px;margin-bottom:4px;">⚡ Energía: '+data.energy+'</div>';
+  if(data.diary) html += '<div style="font-size:13px;margin-top:8px;padding:10px;background:var(--cream-mid);border-radius:8px;">'+data.diary+'</div>';
+  box.innerHTML = html;
+}
+
 // ══ PROFILE ══
 
 function openModalDatos(){
@@ -4281,6 +4364,18 @@ function closeAyuda(e) {
   if(e.target === document.getElementById('welcomeModal')) welcomeFinish();
 }
 function startNewCycle() {
+  // Si el ciclo actual tiene varios días pero dayData parece vacío, podría ser un problema de sync
+  const diasConDatos = Object.keys(dayData || {}).length;
+  if(curDay > 3 && diasConDatos === 0) {
+    showToast('Esperá un momento, sincronizando tus datos...');
+    setTimeout(function() {
+      if(Object.keys(dayData || {}).length === 0) {
+        if(!confirm('No se detectaron registros en este ciclo. ¿Seguro que querés iniciar uno nuevo?')) return;
+      }
+      document.getElementById('newCycleModal').style.display = 'flex';
+    }, 800);
+    return;
+  }
   document.getElementById('newCycleModal').style.display = 'flex';
 }
 
