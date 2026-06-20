@@ -1762,18 +1762,17 @@ function initFirebase() {
 
     fbAuth.onAuthStateChanged(function(user) {
       fbUser = user;
-      showToast('[1] AUTH: ' + (user ? user.email : 'sin usuario'));
+      console.log('[AUTH] user:', user ? user.email : 'null');
       if(user) {
         localStorage.setItem('jn_loggedin', '1');
         const modal = document.getElementById('loginModal');
         if(modal) modal.style.display = 'none';
         if(!firestoreLoaded) {
           firestoreLoaded = true;
-          showToast('[2] Cargando Firestore...');
           loadFromFirestore(user.uid);
           renderUserBadge(user);
         } else {
-          showToast('[AUTH] ya cargado, saltando');
+          
         }
       }
     });
@@ -1868,13 +1867,10 @@ function saveToFirestore() {
 
 function loadFromFirestore(uid) {
   if(!fbDb) {
-    showToast('[2b] fbDb null, reintentando...');
     setTimeout(function() { loadFromFirestore(uid); }, 500);
     return;
   }
-  showToast('[2b] fbDb ok');
   fbDb.collection('users').doc(uid).get().then(function(doc) {
-    showToast('[2d] doc recibido, exists: ' + doc.exists);
     if(doc.exists) {
       const data = doc.data();
       if(data.profile) profile = data.profile;
@@ -1885,26 +1881,25 @@ function loadFromFirestore(uid) {
       if(typeof TOTAL !== 'undefined' && profile.cycleLen) TOTAL = profile.cycleLen;
       recalcCurDay();
       // Si hay datos en Firestore y la app no está activa, lanzar directo
-      showToast('[3] nombre: ' + (profile.name||'vacío'));
       if(profile.name) {
         localStorage.setItem('jn_disclaimer_v4','1');
         localStorage.setItem('jn_tour_done','1');
         const appScreen = document.getElementById('screen-app');
         if(!appScreen || !appScreen.classList.contains('active')) {
-          showToast('[4] lanzando app...');
           setTimeout(launchApp, 150);
           return;
-        } else {
-          showToast('[3b] app ya activa');
         }
-      } else {
-        showToast('[3c] sin nombre, no lanza');
       }
       renderProfile();
       drawWheel(); renderPhaseRow(); renderDayCard(); renderAlerts(); renderCalendar(); renderPatterns(); updatePhaseBanner(); renderLuna();
       showToast('Datos sincronizados ✓');
+    } else {
+      // No existe documento en Firestore: si ya tengo datos locales (usuaria con localStorage previo), subirlos
+      if(profile.name) {
+        saveToFirestore();
+      }
     }
-  }).catch(function(e) { showToast('[ERROR] ' + e.message); });
+  }).catch(function(e) { console.warn('Load error:', e); });
 }
 
 function showSyncBanner() {
@@ -4262,7 +4257,7 @@ function esMenopausia() {
   return profile.etapaVital === 'Menopausia / Post-menopausia' || (profile.condicionesSalud||[]).includes('Menopausia');
 }
 function launchApp() {
-  showToast('[5] launchApp!');
+
   if(!localStorage.getItem('jn_since')) localStorage.setItem('jn_since', new Date().toISOString());
   localStorage.setItem('jn_launched', '1');
   document.getElementById('screen-onboarding').classList.remove('active');
